@@ -38,7 +38,7 @@ struct MixerPanel: View {
                 HStack(spacing: 8) {
                     Image(systemName: "dial.high.fill")
                         .foregroundStyle(.orange)
-                    Text("AudioMixer")
+                    Text("Audio Mixer")
                         .font(.headline.weight(.semibold))
                 }
                 .padding(.bottom, 8)
@@ -111,7 +111,7 @@ struct MixerPanel: View {
     private var proConsole: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("AudioMixerClone")
+                Text("Audio Mixer")
                     .font(.headline.weight(.semibold))
                 Spacer()
                 styleSegment
@@ -214,7 +214,7 @@ struct MixerPanel: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    Text("AudioMixerClone")
+                    Text("Audio Mixer")
                         .font(.title2.weight(.semibold))
                     Spacer()
                     styleSegment
@@ -374,7 +374,7 @@ struct MixerPanel: View {
 
     private var header: some View {
         HStack {
-            Text("AudioMixerClone")
+            Text("Audio Mixer")
                 .font(.system(size: 22, weight: .semibold))
 
             Spacer()
@@ -551,7 +551,7 @@ struct MixerPanel: View {
             NSApplication.shared.terminate(nil)
         } label: {
             HStack {
-                Text("Quit Sound Control")
+                Text("Quit Audio Mixer")
                     .font(.system(size: 17, weight: .medium))
                 Spacer()
                 Text("⌘Q")

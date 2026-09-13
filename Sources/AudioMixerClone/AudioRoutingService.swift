@@ -113,7 +113,7 @@ final class CoreAudioTapRoutingService: AudioRoutingService {
 
         let processObjectIDs = try processObjectIDs(for: app)
         let description = CATapDescription(stereoMixdownOfProcesses: processObjectIDs)
-        description.name = "AudioMixerClone Tap - \(app.name)"
+        description.name = "Audio Mixer Tap - \(app.name)"
         description.isPrivate = true
         description.muteBehavior = .mutedWhenTapped
         
@@ -439,7 +439,7 @@ final class CoreAudioTapRoutingService: AudioRoutingService {
     private func createAggregateDevice(appName: String, outputDeviceUID: String, tapUID: String) throws -> AudioObjectID {
         let aggregateUID = "com.example.AudioMixerClone.aggregate.\(UUID().uuidString)"
         let description: [String: Any] = [
-            kAudioAggregateDeviceNameKey: "AudioMixerClone Route - \(appName)",
+            kAudioAggregateDeviceNameKey: "Audio Mixer Route - \(appName)",
             kAudioAggregateDeviceUIDKey: aggregateUID,
             kAudioAggregateDeviceMainSubDeviceKey: outputDeviceUID,
             kAudioAggregateDeviceIsPrivateKey: true,

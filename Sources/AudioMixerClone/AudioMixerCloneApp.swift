@@ -9,7 +9,7 @@ struct AudioMixerCloneApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("AudioMixerClone") {
+        WindowGroup("Audio Mixer") {
             MixerPanel()
                 .environmentObject(store)
                 .frame(

@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="AudioMixerClone"
+APP_NAME="Audio Mixer"
+EXECUTABLE_NAME="AudioMixerClone"
 CONFIGURATION="${CONFIGURATION:-release}"
 DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 
@@ -17,6 +18,9 @@ MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 DMG_PATH="$DIST_DIR/$APP_NAME.dmg"
 ZIP_PATH="$DIST_DIR/$APP_NAME.zip"
+LEGACY_APP_PATH="$DIST_DIR/AudioMixerClone.app"
+LEGACY_DMG_PATH="$DIST_DIR/AudioMixerClone.dmg"
+LEGACY_ZIP_PATH="$DIST_DIR/AudioMixerClone.zip"
 
 mkdir -p "$CLANG_MODULE_CACHE_PATH" "$DIST_DIR"
 
@@ -26,14 +30,14 @@ swift build \
   --cache-path "$BUILD_DIR/cache/swiftpm" \
   --manifest-cache local
 
-rm -rf "$APP_PATH" "$DMG_PATH" "$ZIP_PATH"
+rm -rf "$APP_PATH" "$DMG_PATH" "$ZIP_PATH" "$LEGACY_APP_PATH" "$LEGACY_DMG_PATH" "$LEGACY_ZIP_PATH"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
-cp "$BUILD_DIR/$CONFIGURATION/$APP_NAME" "$MACOS_DIR/$APP_NAME"
+cp "$BUILD_DIR/$CONFIGURATION/$EXECUTABLE_NAME" "$MACOS_DIR/$EXECUTABLE_NAME"
 cp "$ROOT_DIR/Support/Info.plist" "$CONTENTS_DIR/Info.plist"
 cp "$ROOT_DIR/Support/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
 printf "APPL????" > "$CONTENTS_DIR/PkgInfo"
-chmod +x "$MACOS_DIR/$APP_NAME"
+chmod +x "$MACOS_DIR/$EXECUTABLE_NAME"
 
 codesign --force --sign - "$APP_PATH"
 

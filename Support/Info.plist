@@ -4,6 +4,8 @@
 <dict>
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
+    <key>CFBundleDisplayName</key>
+    <string>Audio Mixer</string>
     <key>CFBundleExecutable</key>
     <string>AudioMixerClone</string>
     <key>CFBundleIconFile</key>
@@ -13,7 +15,7 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>AudioMixerClone</string>
+    <string>Audio Mixer</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -27,8 +29,8 @@
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2026 AudioMixerClone contributors.</string>
+    <string>Copyright © 2026 Audio Mixer contributors.</string>
     <key>NSAudioCaptureUsageDescription</key>
-    <string>AudioMixerClone needs system audio capture access to create per-app Core Audio taps for volume and routing controls.</string>
+    <string>Audio Mixer needs system audio capture access to create per-app Core Audio taps for volume and routing controls.</string>
 </dict>
 </plist>

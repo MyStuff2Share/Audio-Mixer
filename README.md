@@ -1,8 +1,8 @@
-# AudioMixerClone
+# Audio Mixer
 
 A native SwiftUI macOS audio mixer inspired by Sound Control-style workflows.
 
-AudioMixerClone provides a visible SwiftUI app window plus a menu-bar extra. It can control hardware input/output volume where macOS exposes those controls, and it can route selected app audio through Core Audio process taps for per-app volume, mute, and balance.
+Audio Mixer provides a visible SwiftUI app window plus a menu-bar extra. It can control hardware input/output volume where macOS exposes those controls, and it can route selected app audio through Core Audio process taps for per-app volume, mute, and balance.
 
 ## Current Features
 
@@ -52,22 +52,22 @@ swift run --disable-sandbox --cache-path .build/cache/swiftpm --manifest-cache l
 Scripts/package.sh
 ```
 
-The script builds a release binary, creates `dist/AudioMixerClone.app`, ad-hoc signs it for local testing, and tries to create `dist/AudioMixerClone.dmg`. If `hdiutil` cannot create a DMG in the current environment, the script creates `dist/AudioMixerClone.zip` instead.
+The script builds a release binary, creates `dist/Audio Mixer.app`, ad-hoc signs it for local testing, and tries to create `dist/Audio Mixer.dmg`. If `hdiutil` cannot create a DMG in the current environment, the script creates `dist/Audio Mixer.zip` instead.
 
 For public distribution, replace ad-hoc signing with Developer ID signing and notarize the DMG with Apple.
 
 ## Install Locally
 
 ```bash
-rm -rf /Applications/AudioMixerClone.app
-cp -R dist/AudioMixerClone.app /Applications/
-open /Applications/AudioMixerClone.app
+rm -rf "/Applications/Audio Mixer.app" /Applications/AudioMixerClone.app
+cp -R "dist/Audio Mixer.app" /Applications/
+open "/Applications/Audio Mixer.app"
 ```
 
 ## How To Test Per-App Volume
 
 1. Start audio in an app, such as YouTube in Brave.
-2. Open AudioMixerClone.
+2. Open Audio Mixer.
 3. Adjust that app’s slider, or click the circular route button beside the app.
 4. Grant system audio capture permission if macOS asks.
 5. When the route button is orange, the app’s slider and mute button should affect that app’s audio.
