@@ -4,6 +4,7 @@ import SwiftUI
 struct MixerPanel: View {
     @EnvironmentObject private var store: MixerStore
     @Environment(\.openSettings) private var openSettings
+    @State private var showsAudioProcesses = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -13,6 +14,7 @@ struct MixerPanel: View {
             Divider()
             outputSection
             Divider()
+            commandRow(title: "Audio Processes", icon: "waveform.path.ecg", action: { showsAudioProcesses = true })
             commandRow(title: "Hot Keys", icon: "keyboard", action: openSettings.callAsFunction)
             commandRow(title: "Settings", icon: "gearshape", action: openSettings.callAsFunction)
             Divider()
@@ -21,6 +23,11 @@ struct MixerPanel: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(.regularMaterial)
+        .sheet(isPresented: $showsAudioProcesses) {
+            AudioProcessDebugView()
+                .environmentObject(store)
+                .frame(width: 660, height: 440)
+        }
     }
 
     private var header: some View {
@@ -69,6 +76,7 @@ struct MixerPanel: View {
                 .font(.system(size: 18, weight: .semibold))
 
             controlModePicker
+            filterControls
             routingStatus
 
             DeviceRow(
@@ -122,7 +130,7 @@ struct MixerPanel: View {
 
     private var appRows: some View {
         VStack(spacing: 8) {
-            ForEach(store.runningApps.prefix(6)) { app in
+            ForEach(store.visibleApps.prefix(8)) { app in
                 AppVolumeRow(
                     app: app,
                     volume: store.volumeBinding(for: app),
@@ -130,12 +138,40 @@ struct MixerPanel: View {
                     balance: store.balanceBinding(for: app),
                     isRouting: store.isRouting(app),
                     routeDetail: store.routeDetail(for: app),
+                    audioProcessCount: store.appAudioProcessCount(app),
+                    isRunningOutput: store.appIsRunningOutput(app),
                     toggleRouting: {
                         store.toggleRouting(for: app)
                     }
                 )
             }
         }
+    }
+
+    private var filterControls: some View {
+        HStack(spacing: 14) {
+            Toggle("Active Only", isOn: Binding(
+                get: { store.settings.showActiveAudioOnly },
+                set: { newValue in
+                    store.settings.showActiveAudioOnly = newValue
+                    store.saveSettings()
+                }
+            ))
+            .toggleStyle(.checkbox)
+
+            Toggle("Auto Route", isOn: Binding(
+                get: { store.settings.autoRouteWhenAdjusting },
+                set: { newValue in
+                    store.settings.autoRouteWhenAdjusting = newValue
+                    store.saveSettings()
+                }
+            ))
+            .toggleStyle(.checkbox)
+
+            Spacer()
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
 
     private var routingStatus: some View {
@@ -240,6 +276,8 @@ struct AppVolumeRow: View {
     @Binding var balance: Double
     let isRouting: Bool
     let routeDetail: String?
+    let audioProcessCount: Int
+    let isRunningOutput: Bool
     let toggleRouting: () -> Void
 
     var body: some View {
@@ -250,6 +288,13 @@ struct AppVolumeRow: View {
                 .font(.system(size: 17, weight: .semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+
+            if audioProcessCount > 0 {
+                Circle()
+                    .fill(isRunningOutput ? Color.green : Color.secondary.opacity(0.55))
+                    .frame(width: 7, height: 7)
+                    .help(isRunningOutput ? "Audio output active" : "\(audioProcessCount) audio process(es)")
+            }
 
             Spacer(minLength: 8)
 
@@ -307,6 +352,65 @@ struct AppVolumeRow: View {
     }
 }
 
+struct AudioProcessDebugView: View {
+    @EnvironmentObject private var store: MixerStore
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Audio Processes")
+                    .font(.title2.weight(.semibold))
+                Spacer()
+                Button {
+                    store.refresh()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.borderless)
+                .help("Refresh")
+
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .help("Close")
+            }
+            .padding(16)
+
+            Divider()
+
+            Table(store.audioProcessRows()) {
+                TableColumn("Output") { process in
+                    Image(systemName: process.isRunningOutput ? "speaker.wave.2.fill" : "speaker")
+                        .foregroundStyle(process.isRunningOutput ? .orange : .secondary)
+                }
+                .width(60)
+
+                TableColumn("PID") { process in
+                    Text(process.processIdentifier.map(String.init) ?? "—")
+                        .font(.system(.body, design: .monospaced))
+                }
+                .width(90)
+
+                TableColumn("Object") { process in
+                    Text(String(process.id))
+                        .font(.system(.body, design: .monospaced))
+                }
+                .width(90)
+
+                TableColumn("Bundle ID") { process in
+                    Text(process.bundleIdentifier ?? "Unknown")
+                        .lineLimit(1)
+                }
+            }
+        }
+    }
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var store: MixerStore
 
@@ -315,6 +419,9 @@ struct SettingsView: View {
             Section("Profiles") {
                 Toggle("Remember app profiles", isOn: settingsBinding(\.rememberAppProfiles))
                 Toggle("Show inactive saved apps", isOn: settingsBinding(\.showInactiveProfiles))
+                Toggle("Hide apps without audio processes", isOn: settingsBinding(\.hideAppsWithoutAudioProcesses))
+                Toggle("Show active audio only", isOn: settingsBinding(\.showActiveAudioOnly))
+                Toggle("Auto-route when adjusting app controls", isOn: settingsBinding(\.autoRouteWhenAdjusting))
             }
 
             Section("Startup") {

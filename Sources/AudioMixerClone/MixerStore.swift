@@ -13,6 +13,7 @@ final class MixerStore: ObservableObject {
     @Published var settings = MixerSettings()
     @Published var selectedControlMode = 0
     @Published var activeRoutes: [String: AppRouteSnapshot] = [:]
+    @Published var audioProcesses: [AudioProcessSnapshot] = []
     @Published var routingMessage: String?
 
     private let deviceController = CoreAudioDeviceController()
@@ -54,6 +55,7 @@ final class MixerStore: ObservableObject {
     func refresh() {
         outputDevice = deviceController.defaultDevice(isInput: false)
         inputDevice = deviceController.defaultDevice(isInput: true)
+        audioProcesses = routingService.audioProcesses()
         runningApps = NSWorkspace.shared.runningApplications
             .filter { $0.activationPolicy == .regular }
             .compactMap { application in
@@ -74,6 +76,9 @@ final class MixerStore: ObservableObject {
         for app in runningApps where profiles[app.id] == nil {
             profiles[app.id] = AppAudioProfile.fresh(for: app, remember: settings.rememberAppProfiles)
         }
+
+        reconcileActiveRoutes()
+        startSavedAutoRoutes()
     }
 
     func setOutputVolume(_ volume: Double) {
@@ -134,6 +139,28 @@ final class MixerStore: ObservableObject {
         saveProfiles()
     }
 
+    var visibleApps: [RunningAudioApp] {
+        runningApps.filter { app in
+            if isRouting(app) {
+                return true
+            }
+
+            let profile = profiles[app.id]
+            let hasAudioProcess = appAudioProcesses(app).isEmpty == false
+            let isActiveOutput = appIsRunningOutput(app)
+
+            if settings.showActiveAudioOnly {
+                return isActiveOutput || (profile?.autoRoute == true && hasAudioProcess)
+            }
+
+            if settings.hideAppsWithoutAudioProcesses {
+                return hasAudioProcess || profile?.autoRoute == true
+            }
+
+            return true
+        }
+    }
+
     func isRouting(_ app: RunningAudioApp) -> Bool {
         activeRoutes[app.bundleIdentifier] != nil
     }
@@ -143,19 +170,78 @@ final class MixerStore: ObservableObject {
     }
 
     func toggleRouting(for app: RunningAudioApp) {
+        if isRouting(app) {
+            stopRouting(for: app, persistAutoRoute: true)
+        } else {
+            startRouting(for: app, persistAutoRoute: true, showMessage: true)
+        }
+    }
+
+    func appAudioProcessCount(_ app: RunningAudioApp) -> Int {
+        appAudioProcesses(app).count
+    }
+
+    func appIsRunningOutput(_ app: RunningAudioApp) -> Bool {
+        appAudioProcesses(app).contains { $0.isRunningOutput }
+    }
+
+    func audioProcessRows() -> [AudioProcessSnapshot] {
+        audioProcesses.sorted { left, right in
+            let leftName = left.bundleIdentifier ?? ""
+            let rightName = right.bundleIdentifier ?? ""
+            if leftName == rightName {
+                return (left.processIdentifier ?? 0) < (right.processIdentifier ?? 0)
+            }
+            return leftName.localizedCaseInsensitiveCompare(rightName) == .orderedAscending
+        }
+    }
+
+    private func startRouting(for app: RunningAudioApp, persistAutoRoute: Bool, showMessage: Bool) {
         do {
-            if isRouting(app) {
-                try routingService.stopRouting(bundleIdentifier: app.bundleIdentifier)
-                activeRoutes.removeValue(forKey: app.bundleIdentifier)
-                routingMessage = "Stopped tap for \(app.name)."
-            } else {
-                let snapshot = try routingService.startRouting(app: app, outputDevice: outputDevice, profile: profile(for: app))
-                activeRoutes[app.bundleIdentifier] = snapshot
+            let snapshot = try routingService.startRouting(app: app, outputDevice: outputDevice, profile: profile(for: app))
+            activeRoutes[app.bundleIdentifier] = snapshot
+
+            if persistAutoRoute {
+                var profile = profile(for: app)
+                profile.autoRoute = true
+                profiles[profile.id] = profile
+                saveProfiles()
+            }
+
+            if showMessage {
                 routingMessage = "Routing \(app.name): \(snapshot.processObjectIDs.count) audio process(es), \(snapshot.streamDescription)."
             }
         } catch {
+            if showMessage {
+                routingMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func stopRouting(for app: RunningAudioApp, persistAutoRoute: Bool) {
+        do {
+            try routingService.stopRouting(bundleIdentifier: app.bundleIdentifier)
+            activeRoutes.removeValue(forKey: app.bundleIdentifier)
+
+            if persistAutoRoute {
+                var profile = profile(for: app)
+                profile.autoRoute = false
+                profiles[profile.id] = profile
+                saveProfiles()
+            }
+
+            routingMessage = "Stopped tap for \(app.name)."
+        } catch {
             routingMessage = error.localizedDescription
         }
+    }
+
+    private func ensureRoutingIfNeeded(for app: RunningAudioApp) {
+        guard settings.autoRouteWhenAdjusting, !isRouting(app) else {
+            return
+        }
+
+        startRouting(for: app, persistAutoRoute: true, showMessage: true)
     }
 
     func volumeBinding(for app: RunningAudioApp) -> Binding<Double> {
@@ -165,6 +251,7 @@ final class MixerStore: ObservableObject {
                 var profile = self.profile(for: app)
                 profile.volume = newValue
                 self.setProfile(profile)
+                self.ensureRoutingIfNeeded(for: app)
             }
         )
     }
@@ -176,6 +263,7 @@ final class MixerStore: ObservableObject {
                 var profile = self.profile(for: app)
                 profile.isMuted = newValue
                 self.setProfile(profile)
+                self.ensureRoutingIfNeeded(for: app)
             }
         )
     }
@@ -187,12 +275,65 @@ final class MixerStore: ObservableObject {
                 var profile = self.profile(for: app)
                 profile.balance = newValue
                 self.setProfile(profile)
+                self.ensureRoutingIfNeeded(for: app)
             }
         )
     }
 
     private func refreshRouteSnapshot(bundleIdentifier: String) {
         activeRoutes[bundleIdentifier] = routingService.snapshot(bundleIdentifier: bundleIdentifier)
+    }
+
+    private func appAudioProcesses(_ app: RunningAudioApp) -> [AudioProcessSnapshot] {
+        audioProcesses.filter { process in
+            guard let bundleIdentifier = process.bundleIdentifier else {
+                return false
+            }
+
+            return bundleIdentifier == app.bundleIdentifier ||
+                bundleIdentifier.hasPrefix("\(app.bundleIdentifier).")
+        }
+    }
+
+    private func reconcileActiveRoutes() {
+        let appsByBundleID = Dictionary(uniqueKeysWithValues: runningApps.map { ($0.bundleIdentifier, $0) })
+
+        for (bundleIdentifier, snapshot) in Array(activeRoutes) {
+            guard let app = appsByBundleID[bundleIdentifier] else {
+                do {
+                    try routingService.stopRouting(bundleIdentifier: bundleIdentifier)
+                    activeRoutes.removeValue(forKey: bundleIdentifier)
+                    routingMessage = "Stopped stale route for \(snapshot.displayName)."
+                } catch {
+                    routingMessage = error.localizedDescription
+                }
+                continue
+            }
+
+            let currentProcessIDs = Set(appAudioProcesses(app).map(\.id))
+            if currentProcessIDs.isEmpty {
+                stopRouting(for: app, persistAutoRoute: false)
+                routingMessage = "\(app.name) stopped producing audio; route cleaned up."
+                continue
+            }
+
+            let routedProcessIDs = Set(snapshot.processObjectIDs)
+            if routedProcessIDs.isDisjoint(with: currentProcessIDs) {
+                stopRouting(for: app, persistAutoRoute: false)
+                startRouting(for: app, persistAutoRoute: false, showMessage: false)
+                routingMessage = "Recovered route for \(app.name)."
+            }
+        }
+    }
+
+    private func startSavedAutoRoutes() {
+        for app in runningApps {
+            guard profile(for: app).autoRoute, !isRouting(app), appIsRunningOutput(app) else {
+                continue
+            }
+
+            startRouting(for: app, persistAutoRoute: false, showMessage: false)
+        }
     }
 
     func saveSettings() {

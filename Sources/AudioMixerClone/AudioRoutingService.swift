@@ -20,12 +20,20 @@ struct AppRouteSnapshot: Equatable {
     var parameters: AppRouteParameters
 }
 
+struct AudioProcessSnapshot: Identifiable, Equatable {
+    var id: AudioObjectID
+    var processIdentifier: pid_t?
+    var bundleIdentifier: String?
+    var isRunningOutput: Bool
+}
+
 protocol AudioRoutingService: AnyObject {
     func startRouting(app: RunningAudioApp, outputDevice: AudioDevice, profile: AppAudioProfile) throws -> AppRouteSnapshot
     func stopRouting(bundleIdentifier: String) throws
     func stopAll()
     func updateParameters(bundleIdentifier: String, parameters: AppRouteParameters)
     func snapshot(bundleIdentifier: String) -> AppRouteSnapshot?
+    func audioProcesses() -> [AudioProcessSnapshot]
 }
 
 enum AudioRoutingError: LocalizedError {
@@ -231,6 +239,17 @@ final class CoreAudioTapRoutingService: AudioRoutingService {
 
     func snapshot(bundleIdentifier: String) -> AppRouteSnapshot? {
         routes[bundleIdentifier]?.snapshot
+    }
+
+    func audioProcesses() -> [AudioProcessSnapshot] {
+        readAudioProcesses().map {
+            AudioProcessSnapshot(
+                id: $0.id,
+                processIdentifier: $0.pid,
+                bundleIdentifier: $0.bundleIdentifier,
+                isRunningOutput: $0.isRunningOutput
+            )
+        }
     }
 
     private func processObjectIDs(for app: RunningAudioApp) throws -> [AudioObjectID] {
