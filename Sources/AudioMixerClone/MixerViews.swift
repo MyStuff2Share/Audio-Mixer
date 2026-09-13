@@ -1,11 +1,18 @@
 import AppKit
 import SwiftUI
 
+private enum SidebarDashboardSection {
+    case mixer
+    case devices
+    case routes
+}
+
 struct MixerPanel: View {
     @EnvironmentObject private var store: MixerStore
     @Environment(\.openSettings) private var openSettings
     @State private var showsAudioProcesses = false
     @State private var showsHotKeys = false
+    @State private var sidebarSection: SidebarDashboardSection = .mixer
 
     var body: some View {
         Group {
@@ -43,9 +50,9 @@ struct MixerPanel: View {
                 }
                 .padding(.bottom, 8)
 
-                sidebarButton("Mixer", "slider.horizontal.3", selected: true) {}
-                sidebarButton("Devices", "speaker.wave.2", selected: false) { showsAudioProcesses = true }
-                sidebarButton("Routes", "arrow.triangle.branch", selected: false) { showsAudioProcesses = true }
+                sidebarButton("Mixer", "slider.horizontal.3", selected: sidebarSection == .mixer) { sidebarSection = .mixer }
+                sidebarButton("Devices", "speaker.wave.2", selected: sidebarSection == .devices) { sidebarSection = .devices }
+                sidebarButton("Routes", "arrow.triangle.branch", selected: sidebarSection == .routes) { sidebarSection = .routes }
                 sidebarButton("Hot Keys", "keyboard", selected: false) { showsHotKeys = true }
                 sidebarButton("Settings", "gearshape", selected: false, action: openSettings.callAsFunction)
 
@@ -76,36 +83,153 @@ struct MixerPanel: View {
 
             Divider()
 
-            VStack(alignment: .leading, spacing: 14) {
-                dashboardToolbar
-                routingStatus
-
-                HStack(spacing: 12) {
-                    deviceSummaryCard(title: "Output", icon: "speaker.wave.2.fill", device: store.outputDevice)
-                    deviceSummaryCard(title: "Input", icon: "mic.fill", device: store.inputDevice)
-                }
-
-                ScrollView {
-                    VStack(spacing: 10) {
-                        ForEach(store.visibleApps.prefix(10)) { app in
-                            DashboardAppRow(
-                                app: app,
-                                volume: store.volumeBinding(for: app),
-                                isMuted: store.mutedBinding(for: app),
-                                isRouting: store.isRouting(app),
-                                audioProcessCount: store.appAudioProcessCount(app),
-                                isRunningOutput: store.appIsRunningOutput(app),
-                                toggleRouting: { store.toggleRouting(for: app) }
-                            )
-                        }
-                    }
-                    .padding(.trailing, 4)
-                }
-            }
+            sidebarContent
             .padding(18)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    @ViewBuilder
+    private var sidebarContent: some View {
+        switch sidebarSection {
+        case .mixer:
+            mixerDashboardContent
+        case .devices:
+            devicesDashboardContent
+        case .routes:
+            routesDashboardContent
+        }
+    }
+
+    private var mixerDashboardContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            dashboardToolbar
+            routingStatus
+
+            HStack(spacing: 12) {
+                deviceSummaryCard(title: "Output", icon: "speaker.wave.2.fill", device: store.outputDevice)
+                deviceSummaryCard(title: "Input", icon: "mic.fill", device: store.inputDevice)
+            }
+
+            ScrollView {
+                VStack(spacing: 10) {
+                    ForEach(store.visibleApps.prefix(10)) { app in
+                        DashboardAppRow(
+                            app: app,
+                            volume: store.volumeBinding(for: app),
+                            isMuted: store.mutedBinding(for: app),
+                            isRouting: store.isRouting(app),
+                            audioProcessCount: store.appAudioProcessCount(app),
+                            isRunningOutput: store.appIsRunningOutput(app),
+                            toggleRouting: { store.toggleRouting(for: app) }
+                        )
+                    }
+                }
+                .padding(.trailing, 4)
+            }
+        }
+    }
+
+    private var devicesDashboardContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Devices")
+                        .font(.title2.weight(.semibold))
+                    Text("Input and output controls")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                panelIconButton("Refresh", "arrow.clockwise") { store.refresh() }
+                panelIconButton("Audio Processes", "waveform.path.ecg") { showsAudioProcesses = true }
+            }
+
+            VStack(spacing: 12) {
+                DeviceRow(
+                    title: store.outputDevice.name,
+                    symbol: "speaker.wave.2.fill",
+                    volume: Binding(get: { store.outputDevice.volume }, set: { store.setOutputVolume($0) }),
+                    isMuted: Binding(get: { store.outputDevice.isMuted }, set: { store.setOutputMuted($0) }),
+                    canSetVolume: store.outputDevice.canSetVolume,
+                    canSetMute: store.outputDevice.canSetMute,
+                    showsDisclosure: false
+                )
+                .padding(14)
+                .background(Color(nsColor: .controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                DeviceRow(
+                    title: store.inputDevice.name,
+                    symbol: "mic.fill",
+                    volume: Binding(get: { store.inputDevice.volume }, set: { store.setInputVolume($0) }),
+                    isMuted: Binding(get: { store.inputDevice.isMuted }, set: { store.setInputMuted($0) }),
+                    canSetVolume: store.inputDevice.canSetVolume,
+                    canSetMute: store.inputDevice.canSetMute,
+                    showsDisclosure: false
+                )
+                .padding(14)
+                .background(Color(nsColor: .controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+
+            SettingsSectionBox(title: "Device Notes") {
+                SettingsValueRow(title: "Output device UID") {
+                    Text(store.outputDevice.uid ?? "Unavailable")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                SettingsValueRow(title: "Input device UID") {
+                    Text(store.inputDevice.uid ?? "Unavailable")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer()
+        }
+    }
+
+    private var routesDashboardContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Routes")
+                        .font(.title2.weight(.semibold))
+                    Text("Apps routed through the Core Audio tap backend")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                panelIconButton("Audio Processes", "waveform.path.ecg") { showsAudioProcesses = true }
+            }
+
+            routingStatus
+
+            ScrollView {
+                VStack(spacing: 10) {
+                    ForEach(store.visibleApps.prefix(12)) { app in
+                        RouteDashboardRow(
+                            app: app,
+                            volume: store.volumeBinding(for: app),
+                            isMuted: store.mutedBinding(for: app),
+                            isRouting: store.isRouting(app),
+                            audioProcessCount: store.appAudioProcessCount(app),
+                            isRunningOutput: store.appIsRunningOutput(app),
+                            toggleRouting: { store.toggleRouting(for: app) }
+                        )
+                    }
+                }
+                .padding(.trailing, 4)
+            }
+        }
     }
 
     private var proConsole: some View {
@@ -685,6 +809,63 @@ struct DashboardAppRow: View {
             .buttonStyle(.plain)
         }
         .padding(10)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+struct RouteDashboardRow: View {
+    let app: RunningAudioApp
+    @Binding var volume: Double
+    @Binding var isMuted: Bool
+    let isRouting: Bool
+    let audioProcessCount: Int
+    let isRunningOutput: Bool
+    let toggleRouting: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            AppIconBadge(app: app, size: 32)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(app.name)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+
+                HStack(spacing: 6) {
+                    Label("\(audioProcessCount) process\(audioProcessCount == 1 ? "" : "es")", systemImage: "cpu")
+                    Label(isRunningOutput ? "active" : "idle", systemImage: isRunningOutput ? "speaker.wave.2.fill" : "speaker")
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button {
+                isMuted.toggle()
+            } label: {
+                Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.1.fill")
+                    .frame(width: 28)
+            }
+            .buttonStyle(.plain)
+
+            Slider(value: $volume, in: 0...1)
+                .frame(width: 150)
+                .tint(.orange)
+
+            Button(action: toggleRouting) {
+                Label(isRouting ? "Routed" : "Route", systemImage: isRouting ? "record.circle.fill" : "record.circle")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(isRouting ? Color.orange.opacity(0.18) : Color.secondary.opacity(0.12))
+                    .foregroundStyle(isRouting ? .orange : .secondary)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
         .background(Color(nsColor: .controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
