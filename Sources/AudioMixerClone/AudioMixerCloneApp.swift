@@ -43,5 +43,33 @@ struct AudioMixerCloneApp: App {
                 .environmentObject(store)
                 .frame(width: 600, height: 500)
         }
+        .commands {
+            CommandMenu("Interface") {
+                Button("Sidebar Dashboard") {
+                    setInterfaceStyle(.sidebarDashboard)
+                }
+                .keyboardShortcut("1", modifiers: .command)
+
+                Button("Pro Console") {
+                    setInterfaceStyle(.proConsole)
+                }
+                .keyboardShortcut("2", modifiers: .command)
+
+                Button("Routing Map") {
+                    setInterfaceStyle(.routingMap)
+                }
+                .keyboardShortcut("3", modifiers: .command)
+
+                Button("Card Stack") {
+                    setInterfaceStyle(.cardStack)
+                }
+                .keyboardShortcut("4", modifiers: .command)
+            }
+        }
+    }
+
+    private func setInterfaceStyle(_ style: MixerInterfaceStyle) {
+        store.settings.interfaceStyle = style
+        store.saveSettings()
     }
 }

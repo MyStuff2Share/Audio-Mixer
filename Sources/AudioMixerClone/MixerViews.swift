@@ -1162,6 +1162,7 @@ struct AudioProcessDebugView: View {
 
 struct SettingsView: View {
     @EnvironmentObject private var store: MixerStore
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
@@ -1214,6 +1215,9 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .onExitCommand {
+            dismiss()
+        }
     }
 
     private func settingsBinding<Value>(_ keyPath: WritableKeyPath<MixerSettings, Value>) -> Binding<Value> {
