@@ -99,7 +99,30 @@ struct AppAudioProfile: Codable, Equatable, Identifiable {
     }
 }
 
+enum MixerInterfaceStyle: String, Codable, CaseIterable, Identifiable {
+    case sidebarDashboard
+    case proConsole
+    case routingMap
+    case cardStack
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .sidebarDashboard:
+            "Sidebar Dashboard"
+        case .proConsole:
+            "Pro Console"
+        case .routingMap:
+            "Routing Map"
+        case .cardStack:
+            "Card Stack"
+        }
+    }
+}
+
 struct MixerSettings: Codable, Equatable {
+    var interfaceStyle: MixerInterfaceStyle = .sidebarDashboard
     var rememberAppProfiles = true
     var showInactiveProfiles = false
     var hideAppsWithoutAudioProcesses = true
@@ -109,6 +132,7 @@ struct MixerSettings: Codable, Equatable {
     var shortcutStep = 5.0
 
     private enum CodingKeys: String, CodingKey {
+        case interfaceStyle
         case rememberAppProfiles
         case showInactiveProfiles
         case hideAppsWithoutAudioProcesses
@@ -122,6 +146,7 @@ struct MixerSettings: Codable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        interfaceStyle = try container.decodeIfPresent(MixerInterfaceStyle.self, forKey: .interfaceStyle) ?? .sidebarDashboard
         rememberAppProfiles = try container.decodeIfPresent(Bool.self, forKey: .rememberAppProfiles) ?? true
         showInactiveProfiles = try container.decodeIfPresent(Bool.self, forKey: .showInactiveProfiles) ?? false
         hideAppsWithoutAudioProcesses = try container.decodeIfPresent(Bool.self, forKey: .hideAppsWithoutAudioProcesses) ?? true

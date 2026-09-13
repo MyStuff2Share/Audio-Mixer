@@ -19,6 +19,7 @@ AudioMixerClone provides a visible SwiftUI app window plus a menu-bar extra. It 
 - Route recovery when an app’s audio helper process changes.
 - App-list filtering for likely audio-capable apps and an Active Only mode.
 - Audio Processes debug view showing Core Audio object ID, PID, bundle ID, and output activity.
+- Four selectable interface styles: Sidebar Dashboard, Pro Console, Routing Map, and Card Stack.
 - Local packaging script for `.app`, `.dmg` when available, and `.zip` fallback.
 
 ## Requirements

@@ -12,7 +12,7 @@ struct AudioMixerCloneApp: App {
         WindowGroup("AudioMixerClone") {
             MixerPanel()
                 .environmentObject(store)
-                .frame(width: 430)
+                .frame(width: 760, height: 520)
                 .onAppear {
                     store.start()
                 }
@@ -22,7 +22,7 @@ struct AudioMixerCloneApp: App {
         MenuBarExtra {
             MixerPanel()
                 .environmentObject(store)
-                .frame(width: 430)
+                .frame(width: 760, height: 520)
                 .onAppear {
                     store.start()
                 }
@@ -34,7 +34,7 @@ struct AudioMixerCloneApp: App {
         Settings {
             SettingsView()
                 .environmentObject(store)
-                .frame(width: 560, height: 420)
+                .frame(width: 600, height: 500)
         }
     }
 }

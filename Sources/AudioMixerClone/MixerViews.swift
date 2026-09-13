@@ -8,22 +8,18 @@ struct MixerPanel: View {
     @State private var showsHotKeys = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            inputSection
-            Divider()
-            outputSection
-            Divider()
-            commandRow(title: "Audio Processes", icon: "waveform.path.ecg", action: { showsAudioProcesses = true })
-            commandRow(title: "Hot Keys", icon: "keyboard", action: { showsHotKeys = true })
-            commandRow(title: "Settings", icon: "gearshape", action: openSettings.callAsFunction)
-            Divider()
-            quitRow
+        Group {
+            switch store.settings.interfaceStyle {
+            case .sidebarDashboard:
+                sidebarDashboard
+            case .proConsole:
+                proConsole
+            case .routingMap:
+                routingMap
+            case .cardStack:
+                cardStack
+            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.regularMaterial)
         .sheet(isPresented: $showsAudioProcesses) {
             AudioProcessDebugView()
                 .environmentObject(store)
@@ -36,9 +32,349 @@ struct MixerPanel: View {
         }
     }
 
+    private var sidebarDashboard: some View {
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 8) {
+                    Image(systemName: "dial.high.fill")
+                        .foregroundStyle(.orange)
+                    Text("AudioMixer")
+                        .font(.headline.weight(.semibold))
+                }
+                .padding(.bottom, 8)
+
+                sidebarButton("Mixer", "slider.horizontal.3", selected: true) {}
+                sidebarButton("Devices", "speaker.wave.2", selected: false) { showsAudioProcesses = true }
+                sidebarButton("Routes", "arrow.triangle.branch", selected: false) { showsAudioProcesses = true }
+                sidebarButton("Hot Keys", "keyboard", selected: false) { showsHotKeys = true }
+                sidebarButton("Settings", "gearshape", selected: false, action: openSettings.callAsFunction)
+
+                Divider()
+                    .padding(.vertical, 8)
+
+                Text("Filters")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                checkboxFilter("Active Only", \.showActiveAudioOnly)
+                checkboxFilter("Auto Route", \.autoRouteWhenAdjusting)
+
+                Spacer()
+
+                Button {
+                    NSApplication.shared.terminate(nil)
+                } label: {
+                    Label("Quit", systemImage: "power")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+            .padding(18)
+            .frame(width: 180)
+            .background(.thinMaterial)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 14) {
+                dashboardToolbar
+                routingStatus
+
+                HStack(spacing: 12) {
+                    deviceSummaryCard(title: "Output", icon: "speaker.wave.2.fill", device: store.outputDevice)
+                    deviceSummaryCard(title: "Input", icon: "mic.fill", device: store.inputDevice)
+                }
+
+                ScrollView {
+                    VStack(spacing: 10) {
+                        ForEach(store.visibleApps.prefix(10)) { app in
+                            DashboardAppRow(
+                                app: app,
+                                volume: store.volumeBinding(for: app),
+                                isMuted: store.mutedBinding(for: app),
+                                isRouting: store.isRouting(app),
+                                audioProcessCount: store.appAudioProcessCount(app),
+                                isRunningOutput: store.appIsRunningOutput(app),
+                                toggleRouting: { store.toggleRouting(for: app) }
+                            )
+                        }
+                    }
+                    .padding(.trailing, 4)
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private var proConsole: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("AudioMixerClone")
+                    .font(.headline.weight(.semibold))
+                Spacer()
+                styleSegment
+                panelIconButton("Audio Processes", "waveform.path.ecg") { showsAudioProcesses = true }
+                panelIconButton("Settings", "gearshape") { openSettings() }
+            }
+
+            routingStatus
+
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: 10) {
+                    ForEach(store.visibleApps.prefix(7)) { app in
+                        ConsoleChannelStrip(
+                            app: app,
+                            volume: store.volumeBinding(for: app),
+                            isMuted: store.mutedBinding(for: app),
+                            isRouting: store.isRouting(app),
+                            isRunningOutput: store.appIsRunningOutput(app),
+                            toggleRouting: { store.toggleRouting(for: app) }
+                        )
+                    }
+                    MasterChannel(title: "Output", icon: "speaker.wave.2.fill", value: store.outputDevice.volume)
+                    MasterChannel(title: "Input", icon: "mic.fill", value: store.inputDevice.volume)
+                }
+                .padding(.bottom, 6)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(
+            LinearGradient(colors: [Color(red: 0.05, green: 0.07, blue: 0.08), Color(red: 0.10, green: 0.13, blue: 0.15)], startPoint: .top, endPoint: .bottom)
+        )
+        .foregroundStyle(.white)
+    }
+
+    private var routingMap: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Routing")
+                    .font(.title2.weight(.semibold))
+                styleSegment
+                ScrollView {
+                    VStack(spacing: 10) {
+                        ForEach(store.visibleApps.prefix(7)) { app in
+                            RouteSourceTile(
+                                app: app,
+                                volume: store.volumeBinding(for: app),
+                                isRouting: store.isRouting(app),
+                                isRunningOutput: store.appIsRunningOutput(app),
+                                toggleRouting: { store.toggleRouting(for: app) }
+                            )
+                        }
+                    }
+                }
+            }
+            .frame(width: 230)
+
+            VStack(spacing: 18) {
+                routingStatus
+
+                HStack(spacing: 12) {
+                    ForEach(store.visibleApps.prefix(5)) { app in
+                        Image(systemName: store.isRouting(app) ? "arrow.right.circle.fill" : "arrow.right.circle")
+                            .font(.title2)
+                            .foregroundStyle(store.isRouting(app) ? .orange : .secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+
+                VStack(spacing: 10) {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.system(size: 44, weight: .semibold))
+                        .foregroundStyle(.orange)
+                    Text(store.outputDevice.name)
+                        .font(.headline)
+                    Slider(value: Binding(get: { store.outputDevice.volume }, set: { store.setOutputVolume($0) }), in: 0...1)
+                        .tint(.orange)
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity)
+                .background(Color.white.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                Spacer()
+
+                HStack {
+                    panelIconButton("Processes", "waveform.path.ecg") { showsAudioProcesses = true }
+                    panelIconButton("Hot Keys", "keyboard") { showsHotKeys = true }
+                    panelIconButton("Settings", "gearshape") { openSettings() }
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color(red: 0.04, green: 0.08, blue: 0.09))
+        .foregroundStyle(.white)
+    }
+
+    private var cardStack: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text("AudioMixerClone")
+                        .font(.title2.weight(.semibold))
+                    Spacer()
+                    styleSegment
+                    panelIconButton("Settings", "gearshape") { openSettings() }
+                }
+
+                HStack(spacing: 12) {
+                    deviceSummaryCard(title: "Output Device", icon: "speaker.wave.2.fill", device: store.outputDevice)
+                    deviceSummaryCard(title: "Input", icon: "mic.fill", device: store.inputDevice)
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Active Apps")
+                            .font(.headline)
+                        Spacer()
+                        Button {
+                            store.refresh()
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .buttonStyle(.borderless)
+                    }
+
+                    ForEach(store.visibleApps.prefix(8)) { app in
+                        DashboardAppRow(
+                            app: app,
+                            volume: store.volumeBinding(for: app),
+                            isMuted: store.mutedBinding(for: app),
+                            isRouting: store.isRouting(app),
+                            audioProcessCount: store.appAudioProcessCount(app),
+                            isRunningOutput: store.appIsRunningOutput(app),
+                            toggleRouting: { store.toggleRouting(for: app) }
+                        )
+                    }
+                }
+                .padding(14)
+                .background(Color(nsColor: .controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                routingStatus
+            }
+            .padding(18)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private var dashboardToolbar: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Apps")
+                    .font(.title2.weight(.semibold))
+                Text(store.settings.showActiveAudioOnly ? "Active audio only" : "Audio-capable apps")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Picker("Output", selection: .constant(store.outputDevice.name)) {
+                Text(store.outputDevice.name).tag(store.outputDevice.name)
+            }
+            .labelsHidden()
+            .frame(width: 190)
+
+            panelIconButton("Audio Processes", "waveform.path.ecg") { showsAudioProcesses = true }
+            panelIconButton("Settings", "gearshape") { openSettings() }
+        }
+    }
+
+    private var styleSegment: some View {
+        Picker("Interface", selection: Binding(
+            get: { store.settings.interfaceStyle },
+            set: { newValue in
+                store.settings.interfaceStyle = newValue
+                store.saveSettings()
+            }
+        )) {
+            ForEach(MixerInterfaceStyle.allCases) { style in
+                Text(style.displayName).tag(style)
+            }
+        }
+        .labelsHidden()
+        .frame(width: 190)
+    }
+
+    private func settingBinding(_ keyPath: WritableKeyPath<MixerSettings, Bool>) -> Binding<Bool> {
+        Binding(
+            get: { store.settings[keyPath: keyPath] },
+            set: { newValue in
+                store.settings[keyPath: keyPath] = newValue
+                store.saveSettings()
+            }
+        )
+    }
+
+    private func checkboxFilter(_ title: String, _ keyPath: WritableKeyPath<MixerSettings, Bool>) -> some View {
+        Toggle(title, isOn: settingBinding(keyPath))
+            .toggleStyle(.checkbox)
+            .font(.caption)
+    }
+
+    private func sidebarButton(_ title: String, _ icon: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(selected ? Color.orange : Color.clear)
+                .foregroundStyle(selected ? .white : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func panelIconButton(_ title: String, _ icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .frame(width: 30, height: 30)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(title)
+    }
+
+    private func deviceSummaryCard(title: String, icon: String, device: AudioDevice) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .frame(width: 34, height: 34)
+                    .background(Color.orange.opacity(0.12))
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(device.name)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                }
+
+                Spacer()
+            }
+
+            ProgressView(value: device.volume)
+                .tint(.orange)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
     private var header: some View {
         HStack {
-            Text("Sound Control")
+            Text("AudioMixerClone")
                 .font(.system(size: 22, weight: .semibold))
 
             Spacer()
@@ -275,6 +611,242 @@ struct DeviceRow: View {
     }
 }
 
+struct AppIconBadge: View {
+    let app: RunningAudioApp
+    var size: CGFloat = 28
+
+    var body: some View {
+        Group {
+            if let icon = app.icon {
+                Image(nsImage: icon)
+                    .resizable()
+            } else {
+                Image(systemName: "app.fill")
+                    .resizable()
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: max(5, size * 0.2)))
+    }
+}
+
+struct DashboardAppRow: View {
+    let app: RunningAudioApp
+    @Binding var volume: Double
+    @Binding var isMuted: Bool
+    let isRouting: Bool
+    let audioProcessCount: Int
+    let isRunningOutput: Bool
+    let toggleRouting: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            AppIconBadge(app: app, size: 32)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(app.name)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+
+                    Circle()
+                        .fill(isRunningOutput ? Color.green : Color.secondary.opacity(audioProcessCount > 0 ? 0.55 : 0.18))
+                        .frame(width: 7, height: 7)
+                }
+
+                WaveformMini(isActive: isRunningOutput)
+            }
+            .frame(width: 150, alignment: .leading)
+
+            Button {
+                isMuted.toggle()
+            } label: {
+                Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 26)
+            }
+            .buttonStyle(.plain)
+
+            Slider(value: $volume, in: 0...1)
+                .tint(.orange)
+
+            Text("\(Int(volume * 100))%")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: 42, alignment: .trailing)
+
+            Button(action: toggleRouting) {
+                Label(isRouting ? "On" : "Route", systemImage: isRouting ? "record.circle.fill" : "record.circle")
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(isRouting ? .orange : .secondary)
+                    .font(.system(size: 18, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(10)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+struct ConsoleChannelStrip: View {
+    let app: RunningAudioApp
+    @Binding var volume: Double
+    @Binding var isMuted: Bool
+    let isRouting: Bool
+    let isRunningOutput: Bool
+    let toggleRouting: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Text(app.name)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .frame(height: 18)
+
+            AppIconBadge(app: app, size: 34)
+
+            LevelMeter(value: isRunningOutput ? max(0.18, volume) : 0.08)
+                .frame(height: 132)
+
+            Slider(value: $volume, in: 0...1)
+                .rotationEffect(.degrees(-90))
+                .frame(width: 116, height: 30)
+                .tint(.orange)
+                .padding(.vertical, 28)
+
+            Button {
+                isMuted.toggle()
+            } label: {
+                Image(systemName: isMuted ? "speaker.slash.fill" : "speaker.wave.1.fill")
+                    .frame(width: 28, height: 28)
+                    .background(isMuted ? Color.orange : Color.white.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+            .buttonStyle(.plain)
+
+            Button(action: toggleRouting) {
+                Text(isRouting ? "Routed" : "Route")
+                    .font(.caption2.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 7)
+                    .background(isRouting ? Color.orange : Color.white.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 7))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .frame(width: 88)
+        .background(Color.white.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+struct MasterChannel: View {
+    let title: String
+    let icon: String
+    let value: Double
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+            Image(systemName: icon)
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(.orange)
+                .frame(width: 44, height: 44)
+                .background(Color.white.opacity(0.08))
+                .clipShape(Circle())
+            LevelMeter(value: value)
+                .frame(height: 180)
+            Text("\(Int(value * 100))%")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(width: 92)
+        .background(Color.white.opacity(0.09))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+struct RouteSourceTile: View {
+    let app: RunningAudioApp
+    @Binding var volume: Double
+    let isRouting: Bool
+    let isRunningOutput: Bool
+    let toggleRouting: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                AppIconBadge(app: app, size: 30)
+                Text(app.name)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Spacer()
+                Circle()
+                    .fill(isRunningOutput ? Color.green : Color.secondary)
+                    .frame(width: 7, height: 7)
+            }
+
+            HStack {
+                Slider(value: $volume, in: 0...1)
+                    .tint(isRouting ? .orange : .secondary)
+                Text("\(Int(volume * 100))%")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 38)
+            }
+        }
+        .padding(12)
+        .background(isRouting ? Color.orange.opacity(0.18) : Color.white.opacity(0.08))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(isRouting ? Color.orange : Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .onTapGesture(perform: toggleRouting)
+    }
+}
+
+struct WaveformMini: View {
+    let isActive: Bool
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(0..<12, id: \.self) { index in
+                Capsule()
+                    .fill(isActive ? Color.orange.opacity(0.85) : Color.secondary.opacity(0.22))
+                    .frame(width: 2, height: CGFloat([7, 12, 18, 10, 15, 8, 20, 11, 16, 9, 13, 6][index]))
+            }
+        }
+        .frame(height: 20, alignment: .center)
+    }
+}
+
+struct LevelMeter: View {
+    let value: Double
+
+    var body: some View {
+        VStack(spacing: 3) {
+            ForEach((0..<12).reversed(), id: \.self) { index in
+                Capsule()
+                    .fill(Double(index + 1) / 12 <= value ? meterColor(index) : Color.white.opacity(0.10))
+                    .frame(width: 8, height: 8)
+            }
+        }
+    }
+
+    private func meterColor(_ index: Int) -> Color {
+        if index > 8 {
+            return .orange
+        }
+        return .green
+    }
+}
+
 struct AppVolumeRow: View {
     let app: RunningAudioApp
     @Binding var volume: Double
@@ -344,17 +916,7 @@ struct AppVolumeRow: View {
     }
 
     private var appIcon: some View {
-        Group {
-            if let icon = app.icon {
-                Image(nsImage: icon)
-                    .resizable()
-            } else {
-                Image(systemName: "app.fill")
-                    .resizable()
-            }
-        }
-        .frame(width: 24, height: 24)
-        .clipShape(RoundedRectangle(cornerRadius: 5))
+        AppIconBadge(app: app, size: 24)
     }
 }
 
@@ -425,6 +987,24 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 18) {
                 Text("Settings")
                     .font(.title2.weight(.semibold))
+
+                SettingsSectionBox(title: "Appearance") {
+                    SettingsValueRow(title: "Interface") {
+                        Picker("Interface", selection: Binding(
+                            get: { store.settings.interfaceStyle },
+                            set: { newValue in
+                                store.settings.interfaceStyle = newValue
+                                store.saveSettings()
+                            }
+                        )) {
+                            ForEach(MixerInterfaceStyle.allCases) { style in
+                                Text(style.displayName).tag(style)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 220)
+                    }
+                }
 
                 SettingsSectionBox(title: "Profiles") {
                     SettingsToggleRow(title: "Remember app profiles", binding: settingsBinding(\.rememberAppProfiles))
