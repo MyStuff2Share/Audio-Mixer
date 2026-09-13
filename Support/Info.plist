@@ -6,6 +6,8 @@
     <string>en</string>
     <key>CFBundleExecutable</key>
     <string>AudioMixerClone</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>com.example.AudioMixerClone</string>
     <key>CFBundleInfoDictionaryVersion</key>
