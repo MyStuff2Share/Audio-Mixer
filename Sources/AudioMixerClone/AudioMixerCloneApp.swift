@@ -12,12 +12,19 @@ struct AudioMixerCloneApp: App {
         WindowGroup("AudioMixerClone") {
             MixerPanel()
                 .environmentObject(store)
-                .frame(width: 760, height: 520)
+                .frame(
+                    minWidth: 680,
+                    idealWidth: 760,
+                    maxWidth: .infinity,
+                    minHeight: 460,
+                    idealHeight: 520,
+                    maxHeight: .infinity
+                )
                 .onAppear {
                     store.start()
                 }
         }
-        .windowResizability(.contentSize)
+        .defaultSize(width: 760, height: 520)
 
         MenuBarExtra {
             MixerPanel()
