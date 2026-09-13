@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct AudioMixerCloneApp: App {
     @StateObject private var store = MixerStore()
+    @Environment(\.openWindow) private var openWindow
 
     init() {
         LaunchDiagnostics.recordLaunch()
@@ -43,6 +44,13 @@ struct AudioMixerCloneApp: App {
                 .environmentObject(store)
                 .frame(width: 600, height: 500)
         }
+
+        Window("Audio Mixer Help", id: "help") {
+            HelpView()
+                .frame(width: 680, height: 620)
+        }
+        .defaultSize(width: 680, height: 620)
+
         .commands {
             CommandMenu("Interface") {
                 Button("Sidebar Dashboard") {
@@ -64,6 +72,13 @@ struct AudioMixerCloneApp: App {
                     setInterfaceStyle(.cardStack)
                 }
                 .keyboardShortcut("4", modifiers: .command)
+            }
+
+            CommandGroup(replacing: .help) {
+                Button("Audio Mixer Help") {
+                    openWindow(id: "help")
+                }
+                .keyboardShortcut("?", modifiers: .command)
             }
         }
     }

@@ -20,6 +20,7 @@ Audio Mixer provides a visible SwiftUI app window plus a menu-bar extra. It can 
 - App-list filtering for likely audio-capable apps and an Active Only mode.
 - Audio Processes debug view showing Core Audio object ID, PID, bundle ID, and output activity.
 - Four selectable interface styles: Sidebar Dashboard, Pro Console, Routing Map, and Card Stack.
+- Built-in Help guide available from the macOS Help menu with setup, routing, shortcuts, and troubleshooting notes.
 - Local packaging script for `.app`, `.dmg` when available, and `.zip` fallback.
 
 ## Requirements

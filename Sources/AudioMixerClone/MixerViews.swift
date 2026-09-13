@@ -1353,3 +1353,173 @@ struct HotKeyRow: View {
         }
     }
 }
+
+struct HelpView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Audio Mixer Guide")
+                            .font(.largeTitle.weight(.semibold))
+                        Text("Per-app volume, routing, and device control for macOS.")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help("Close")
+                }
+
+                HelpSection(title: "Getting Started", symbol: "play.circle.fill") {
+                    HelpStep(number: 1, text: "Start audio in the app you want to control.")
+                    HelpStep(number: 2, text: "Find the app in the mixer list. The green dot means Core Audio sees active output.")
+                    HelpStep(number: 3, text: "Move the app slider or click the circular route button. Audio Mixer will create a route for that app.")
+                    HelpStep(number: 4, text: "Grant system audio capture permission if macOS asks.")
+                }
+
+                HelpSection(title: "Per-App Routing", symbol: "arrow.triangle.branch") {
+                    HelpParagraph("The circular route button turns app routing on or off. When it is orange, the app is passing through Audio Mixer’s tap and IOProc, so volume, mute, and balance changes affect that app.")
+                    HelpParagraph("Browsers and Electron apps may play audio through helper processes. Audio Mixer matches those helper processes automatically when possible.")
+                }
+
+                HelpSection(title: "Interface Styles", symbol: "rectangle.3.group") {
+                    HelpShortcut(keys: "⌘1", label: "Sidebar Dashboard")
+                    HelpShortcut(keys: "⌘2", label: "Pro Console")
+                    HelpShortcut(keys: "⌘3", label: "Routing Map")
+                    HelpShortcut(keys: "⌘4", label: "Card Stack")
+                    HelpParagraph("You can also choose the interface style in Settings > Appearance.")
+                }
+
+                HelpSection(title: "Sidebar Dashboard", symbol: "sidebar.left") {
+                    HelpParagraph("Mixer shows app volume rows. Devices shows input and output device controls. Routes shows routing status, audio process counts, and per-app route toggles.")
+                    HelpParagraph("Audio Processes is a debug view for inspecting the Core Audio process list.")
+                }
+
+                HelpSection(title: "Troubleshooting", symbol: "wrench.and.screwdriver.fill") {
+                    HelpBullet("If an app slider does nothing, make sure the route button is orange.")
+                    HelpBullet("If an app is missing, turn off Active Only or use Audio Processes to inspect its bundle ID.")
+                    HelpBullet("If routing fails after an app restarts, toggle the route off and on again.")
+                    HelpBullet("If macOS denied capture permission, enable it in System Settings and relaunch Audio Mixer.")
+                }
+
+                HelpSection(title: "Keyboard And Windows", symbol: "keyboard") {
+                    HelpShortcut(keys: "Esc", label: "Close Settings or this Help window")
+                    HelpShortcut(keys: "⌘Q", label: "Quit Audio Mixer")
+                    HelpShortcut(keys: "⌘?", label: "Open this guide")
+                }
+
+                HelpSection(title: "Packaging", symbol: "shippingbox.fill") {
+                    HelpParagraph("Use Scripts/package.sh to build the local app bundle. In this development environment, DMG creation may fall back to a zip.")
+                    HelpParagraph("For public distribution, sign with Developer ID and notarize the app or DMG with Apple.")
+                }
+            }
+            .padding(28)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+        .onExitCommand {
+            dismiss()
+        }
+    }
+}
+
+struct HelpSection<Content: View>: View {
+    let title: String
+    let symbol: String
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(title, systemImage: symbol)
+                .font(.title3.weight(.semibold))
+
+            VStack(alignment: .leading, spacing: 10) {
+                content
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+}
+
+struct HelpStep: View {
+    let number: Int
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(String(number))
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 22, height: 22)
+                .background(Color.orange)
+                .clipShape(Circle())
+
+            Text(text)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+struct HelpParagraph: View {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    var body: some View {
+        Text(text)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+struct HelpBullet: View {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.orange)
+                .font(.caption)
+                .padding(.top, 3)
+            Text(text)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+struct HelpShortcut: View {
+    let keys: String
+    let label: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(keys)
+                .font(.system(.body, design: .monospaced).weight(.medium))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(nsColor: .separatorColor).opacity(0.25))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+
+            Text(label)
+        }
+    }
+}
