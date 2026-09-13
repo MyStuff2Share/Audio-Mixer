@@ -1,55 +1,103 @@
 # AudioMixerClone
 
-A native SwiftUI macOS menu-bar audio mixer inspired by Sound Control-style workflows.
+A native SwiftUI macOS audio mixer inspired by Sound Control-style workflows.
 
-## What Works
+AudioMixerClone provides a visible SwiftUI app window plus a menu-bar extra. It can control hardware input/output volume where macOS exposes those controls, and it can route selected app audio through Core Audio process taps for per-app volume, mute, and balance.
 
-- Menu-bar window UI with input, output, app, hotkey, and settings sections.
-- Current default output/input device discovery through CoreAudio.
-- Hardware volume and mute control for devices that expose those controls to macOS.
-- Running-app list from `NSWorkspace`.
-- Per-app volume, mute, balance, and EQ profile persistence by bundle identifier.
-- Core Audio process tap creation/destruction for individual running apps on macOS 14.2+.
-- Live routing parameter updates from the per-app sliders into the active tap backend.
-- Settings window for remembered app profiles, launch behavior preference, and shortcut step size.
+## Current Features
 
-## Important Limitation
+- Default input and output device discovery through Core Audio.
+- Hardware input/output volume and mute control when supported by the device.
+- Per-app volume, mute, and balance profiles persisted by bundle identifier.
+- Core Audio process tap routing for running apps on macOS 14.2+.
+- Private aggregate-device creation for each active app route.
+- Real-time IOProc processing that applies gain, mute, and balance to tapped app audio.
+- Browser/helper-process matching for apps such as Brave, Chrome, Electron apps, and other multi-process apps.
+- Auto-route when an app slider, mute button, or balance control is adjusted.
+- Remembered auto-route preferences for apps that should route again when they produce audio.
+- Automatic stale-route cleanup when an app quits or stops exposing audio processes.
+- Route recovery when an app’s audio helper process changes.
+- App-list filtering for likely audio-capable apps and an Active Only mode.
+- Audio Processes debug view showing Core Audio object ID, PID, bundle ID, and output activity.
+- Local packaging script for `.app`, `.dmg` when available, and `.zip` fallback.
 
-macOS does not provide a simple public API for applying independent volume directly to arbitrary apps. Production per-app audio control generally requires Core Audio process taps, private aggregate devices, Audio Unit processing, or a virtual audio device.
+## Requirements
 
-This project now has the first tap layer: it can resolve a running app's PID to a Core Audio process object and create a private process tap. The next backend step is to attach those tap UIDs to private aggregate devices, start an IOProc, process buffers in real time, and write the mixed output to the selected physical device.
+- macOS 14.2 or later for Core Audio process taps.
+- Xcode installed at `/Applications/Xcode.app`.
+- System audio capture permission when macOS prompts for it.
 
-Core Audio taps require macOS 14.2 or later. A bundled app target must include `NSAudioCaptureUsageDescription`; see `Support/Info.plist`.
+The app bundle includes `NSAudioCaptureUsageDescription` in `Support/Info.plist`.
 
-## Run
+## Build
 
 ```bash
-swift run
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+CLANG_MODULE_CACHE_PATH=$PWD/.build/cache/clang \
+swift build --disable-sandbox --cache-path .build/cache/swiftpm --manifest-cache local
 ```
 
-## Package a macOS App and DMG
+## Run From Source
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+CLANG_MODULE_CACHE_PATH=$PWD/.build/cache/clang \
+swift run --disable-sandbox --cache-path .build/cache/swiftpm --manifest-cache local
+```
+
+## Package
 
 ```bash
 Scripts/package.sh
 ```
 
-The script builds a release binary, creates `dist/AudioMixerClone.app`, ad-hoc signs it for local testing, and creates `dist/AudioMixerClone.dmg`.
+The script builds a release binary, creates `dist/AudioMixerClone.app`, ad-hoc signs it for local testing, and tries to create `dist/AudioMixerClone.dmg`. If `hdiutil` cannot create a DMG in the current environment, the script creates `dist/AudioMixerClone.zip` instead.
 
-For public distribution, replace ad-hoc signing with a Developer ID certificate and notarize the DMG with Apple.
+For public distribution, replace ad-hoc signing with Developer ID signing and notarize the DMG with Apple.
 
-## Build
+## Install Locally
 
 ```bash
-swift build
+rm -rf /Applications/AudioMixerClone.app
+cp -R dist/AudioMixerClone.app /Applications/
+open /Applications/AudioMixerClone.app
 ```
+
+## How To Test Per-App Volume
+
+1. Start audio in an app, such as YouTube in Brave.
+2. Open AudioMixerClone.
+3. Adjust that app’s slider, or click the circular route button beside the app.
+4. Grant system audio capture permission if macOS asks.
+5. When the route button is orange, the app’s slider and mute button should affect that app’s audio.
+
+The status line reports how many Core Audio process objects were routed. Browsers may show helper-process routing depending on where the audio is actually produced.
+
+## Debugging Audio Processes
+
+Use **Audio Processes** in the app to inspect the Core Audio process list. This is useful when a multi-process app reports audio under helper processes or when an app does not appear in the filtered list.
+
+## Limitations
+
+- This is a local-testing app, not a notarized public release.
+- Per-app EQ UI is present as profile state, but EQ DSP is not implemented yet.
+- Per-app output-device routing is not implemented yet; active routes currently target the current default output route used when routing starts.
+- The real-time DSP path is intentionally minimal: gain, mute, and balance only.
+- If macOS audio permissions are denied, taps cannot capture audio until permission is granted in System Settings.
 
 ## Project Layout
 
 ```text
 Sources/AudioMixerClone/
   AudioMixerCloneApp.swift
+  AudioRoutingService.swift
   CoreAudioDeviceController.swift
+  LaunchDiagnostics.swift
   MixerModels.swift
   MixerStore.swift
   MixerViews.swift
+Support/
+  Info.plist
+Scripts/
+  package.sh
 ```
