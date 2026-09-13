@@ -34,7 +34,7 @@ struct AudioMixerCloneApp: App {
         Settings {
             SettingsView()
                 .environmentObject(store)
-                .frame(width: 520, height: 360)
+                .frame(width: 560, height: 420)
         }
     }
 }

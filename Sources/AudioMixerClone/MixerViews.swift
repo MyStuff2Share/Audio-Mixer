@@ -5,6 +5,7 @@ struct MixerPanel: View {
     @EnvironmentObject private var store: MixerStore
     @Environment(\.openSettings) private var openSettings
     @State private var showsAudioProcesses = false
+    @State private var showsHotKeys = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,7 +16,7 @@ struct MixerPanel: View {
             outputSection
             Divider()
             commandRow(title: "Audio Processes", icon: "waveform.path.ecg", action: { showsAudioProcesses = true })
-            commandRow(title: "Hot Keys", icon: "keyboard", action: openSettings.callAsFunction)
+            commandRow(title: "Hot Keys", icon: "keyboard", action: { showsHotKeys = true })
             commandRow(title: "Settings", icon: "gearshape", action: openSettings.callAsFunction)
             Divider()
             quitRow
@@ -27,6 +28,11 @@ struct MixerPanel: View {
             AudioProcessDebugView()
                 .environmentObject(store)
                 .frame(width: 660, height: 440)
+        }
+        .sheet(isPresented: $showsHotKeys) {
+            HotKeysView()
+                .environmentObject(store)
+                .frame(width: 460, height: 320)
         }
     }
 
@@ -415,34 +421,38 @@ struct SettingsView: View {
     @EnvironmentObject private var store: MixerStore
 
     var body: some View {
-        Form {
-            Section("Profiles") {
-                Toggle("Remember app profiles", isOn: settingsBinding(\.rememberAppProfiles))
-                Toggle("Show inactive saved apps", isOn: settingsBinding(\.showInactiveProfiles))
-                Toggle("Hide apps without audio processes", isOn: settingsBinding(\.hideAppsWithoutAudioProcesses))
-                Toggle("Show active audio only", isOn: settingsBinding(\.showActiveAudioOnly))
-                Toggle("Auto-route when adjusting app controls", isOn: settingsBinding(\.autoRouteWhenAdjusting))
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("Settings")
+                    .font(.title2.weight(.semibold))
 
-            Section("Startup") {
-                Toggle("Launch at login", isOn: settingsBinding(\.launchAtLogin))
-            }
+                SettingsSectionBox(title: "Profiles") {
+                    SettingsToggleRow(title: "Remember app profiles", binding: settingsBinding(\.rememberAppProfiles))
+                    SettingsToggleRow(title: "Show inactive saved apps", binding: settingsBinding(\.showInactiveProfiles))
+                    SettingsToggleRow(title: "Hide apps without audio processes", binding: settingsBinding(\.hideAppsWithoutAudioProcesses))
+                    SettingsToggleRow(title: "Show active audio only", binding: settingsBinding(\.showActiveAudioOnly))
+                    SettingsToggleRow(title: "Auto-route when adjusting app controls", binding: settingsBinding(\.autoRouteWhenAdjusting))
+                }
 
-            Section("Hot Keys") {
-                Stepper(value: settingsBinding(\.shortcutStep), in: 1...25, step: 1) {
-                    HStack {
-                        Text("Volume step")
-                        Spacer()
-                        Text("\(Int(store.settings.shortcutStep))%")
-                            .foregroundStyle(.secondary)
+                SettingsSectionBox(title: "Startup") {
+                    SettingsToggleRow(title: "Launch at login", binding: settingsBinding(\.launchAtLogin))
+                }
+
+                SettingsSectionBox(title: "Audio") {
+                    SettingsValueRow(title: "Shortcut volume step") {
+                        Stepper(value: settingsBinding(\.shortcutStep), in: 1...25, step: 1) {
+                            Text("\(Int(store.settings.shortcutStep))%")
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                                .frame(width: 44, alignment: .trailing)
+                        }
                     }
                 }
-                shortcutRow(title: "Volume down", keys: "⌥⌘↓")
-                shortcutRow(title: "Volume up", keys: "⌥⌘↑")
-                shortcutRow(title: "Mute current app", keys: "⌥⌘M")
             }
+            .padding(24)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(24)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private func settingsBinding<Value>(_ keyPath: WritableKeyPath<MixerSettings, Value>) -> Binding<Value> {
@@ -454,14 +464,127 @@ struct SettingsView: View {
             }
         )
     }
+}
 
-    private func shortcutRow(title: String, keys: String) -> some View {
+struct HotKeysView: View {
+    @EnvironmentObject private var store: MixerStore
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Text("Hot Keys")
+                    .font(.title2.weight(.semibold))
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+            }
+
+            SettingsSectionBox(title: "Volume") {
+                SettingsValueRow(title: "Step size") {
+                    Stepper(value: settingsBinding(\.shortcutStep), in: 1...25, step: 1) {
+                        Text("\(Int(store.settings.shortcutStep))%")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .frame(width: 44, alignment: .trailing)
+                    }
+                }
+                HotKeyRow(title: "Volume down", keys: "⌥⌘↓")
+                HotKeyRow(title: "Volume up", keys: "⌥⌘↑")
+                HotKeyRow(title: "Mute current app", keys: "⌥⌘M")
+            }
+
+            Text("Global hotkey registration is not implemented yet; these rows define the intended shortcuts and shared step size.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+        }
+        .padding(24)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private func settingsBinding<Value>(_ keyPath: WritableKeyPath<MixerSettings, Value>) -> Binding<Value> {
+        Binding(
+            get: { store.settings[keyPath: keyPath] },
+            set: { newValue in
+                store.settings[keyPath: keyPath] = newValue
+                store.saveSettings()
+            }
+        )
+    }
+}
+
+struct SettingsSectionBox<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.secondary)
+
+            VStack(spacing: 0) {
+                content
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+    }
+}
+
+struct SettingsToggleRow: View {
+    let title: String
+    @Binding var binding: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .lineLimit(1)
+            Spacer()
+            Toggle("", isOn: $binding)
+                .labelsHidden()
+                .toggleStyle(.switch)
+        }
+        .frame(minHeight: 34)
+    }
+}
+
+struct SettingsValueRow<Accessory: View>: View {
+    let title: String
+    @ViewBuilder var accessory: Accessory
+
+    var body: some View {
         HStack {
             Text(title)
             Spacer()
+            accessory
+        }
+        .frame(minHeight: 34)
+    }
+}
+
+struct HotKeyRow: View {
+    let title: String
+    let keys: String
+
+    var body: some View {
+        SettingsValueRow(title: title) {
             Text(keys)
-                .font(.system(.body, design: .monospaced))
+                .font(.system(.body, design: .monospaced).weight(.medium))
                 .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(nsColor: .separatorColor).opacity(0.25))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
         }
     }
 }
