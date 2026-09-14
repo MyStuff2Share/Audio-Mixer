@@ -144,8 +144,11 @@ struct MixerPanel: View {
 
                 Spacer()
 
-                panelIconButton("Refresh", "arrow.clockwise") { store.refresh() }
-                panelIconButton("Audio Processes", "waveform.path.ecg") { showsAudioProcesses = true }
+                panelIconButton("Refresh", "arrow.clockwise") { store.refreshAudioHardware() }
+                panelIconButton("Audio Processes", "waveform.path.ecg") {
+                    store.refreshAudioHardware()
+                    showsAudioProcesses = true
+                }
             }
 
             VStack(spacing: 12) {
@@ -1112,7 +1115,7 @@ struct AudioProcessDebugView: View {
                     .font(.title2.weight(.semibold))
                 Spacer()
                 Button {
-                    store.refresh()
+                    store.refreshAudioHardware()
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }

@@ -50,7 +50,7 @@ final class MixerStore: ObservableObject {
 
         refresh()
 
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.refresh()
             }
@@ -58,6 +58,14 @@ final class MixerStore: ObservableObject {
     }
 
     func refresh() {
+        refresh(includeAudioHardware: false)
+    }
+
+    func refreshAudioHardware() {
+        refresh(includeAudioHardware: true)
+    }
+
+    private func refresh(includeAudioHardware: Bool) {
         guard !isRefreshInFlight else {
             return
         }
@@ -65,15 +73,27 @@ final class MixerStore: ObservableObject {
         isRefreshInFlight = true
         refreshGeneration += 1
         let generation = refreshGeneration
-        LaunchDiagnostics.record("Refresh started")
+        LaunchDiagnostics.record(includeAudioHardware ? "Audio refresh started" : "App refresh started")
         scheduleRefreshTimeout(generation: generation)
 
         refreshQueue.async { [weak self] in
             let runningApplications = Self.readRunningApplications()
-            let backgroundDeviceController = CoreAudioDeviceController()
-            let outputDevice = backgroundDeviceController.defaultDevice(isInput: false)
-            let inputDevice = backgroundDeviceController.defaultDevice(isInput: true)
-            let audioProcesses = CoreAudioTapRoutingService().audioProcesses()
+            let outputDevice: AudioDevice?
+            let inputDevice: AudioDevice?
+            let audioProcesses: [AudioProcessSnapshot]?
+
+            if includeAudioHardware {
+                LaunchDiagnostics.record("CoreAudio scan started")
+                let backgroundDeviceController = CoreAudioDeviceController()
+                outputDevice = backgroundDeviceController.defaultDevice(isInput: false)
+                inputDevice = backgroundDeviceController.defaultDevice(isInput: true)
+                audioProcesses = CoreAudioTapRoutingService().audioProcesses()
+                LaunchDiagnostics.record("CoreAudio scan finished")
+            } else {
+                outputDevice = nil
+                inputDevice = nil
+                audioProcesses = nil
+            }
 
             Task { @MainActor in
                 guard let self else {
@@ -83,19 +103,24 @@ final class MixerStore: ObservableObject {
                     return
                 }
 
-                self.outputDevice = outputDevice
-                self.inputDevice = inputDevice
-                self.audioProcesses = audioProcesses
+                if let outputDevice, let inputDevice, let audioProcesses {
+                    self.outputDevice = outputDevice
+                    self.inputDevice = inputDevice
+                    self.audioProcesses = audioProcesses
+                }
                 self.runningApps = runningApplications
 
                 for app in self.runningApps where self.profiles[app.id] == nil {
                     self.profiles[app.id] = AppAudioProfile.fresh(for: app, remember: self.settings.rememberAppProfiles)
                 }
 
-                self.reconcileActiveRoutes()
-                self.startSavedAutoRoutes()
+                if includeAudioHardware {
+                    self.reconcileActiveRoutes()
+                    self.startSavedAutoRoutes()
+                }
+
                 self.isRefreshInFlight = false
-                LaunchDiagnostics.record("Refresh finished")
+                LaunchDiagnostics.record(includeAudioHardware ? "Audio refresh finished" : "App refresh finished")
             }
         }
     }
@@ -108,7 +133,7 @@ final class MixerStore: ObservableObject {
             }
 
             isRefreshInFlight = false
-            routingMessage = "Audio process refresh is taking longer than expected; mixer controls remain available."
+            routingMessage = "Refresh is taking longer than expected; mixer controls remain available."
             LaunchDiagnostics.record("Refresh timed out")
         }
     }
@@ -218,6 +243,10 @@ final class MixerStore: ObservableObject {
             }
 
             if settings.hideAppsWithoutAudioProcesses {
+                guard !audioProcesses.isEmpty else {
+                    return true
+                }
+
                 return hasAudioProcess || profile?.autoRoute == true
             }
 
