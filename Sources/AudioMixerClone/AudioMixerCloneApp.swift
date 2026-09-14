@@ -28,7 +28,7 @@ struct AudioMixerCloneApp: App {
         }
         .defaultSize(width: 760, height: 520)
 
-        MenuBarExtra(isInserted: menuBarDockingBinding) {
+        MenuBarExtra {
             MixerPanel()
                 .environmentObject(store)
                 .frame(width: 760, height: 520)
@@ -88,15 +88,5 @@ struct AudioMixerCloneApp: App {
     private func setInterfaceStyle(_ style: MixerInterfaceStyle) {
         store.settings.interfaceStyle = style
         store.saveSettings()
-    }
-
-    private var menuBarDockingBinding: Binding<Bool> {
-        Binding(
-            get: { store.settings.dockInMenuBar },
-            set: { isEnabled in
-                store.settings.dockInMenuBar = isEnabled
-                store.saveSettings()
-            }
-        )
     }
 }
