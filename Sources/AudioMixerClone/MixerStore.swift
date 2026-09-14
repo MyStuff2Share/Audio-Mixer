@@ -18,7 +18,10 @@ final class MixerStore: ObservableObject {
 
     private let deviceController = CoreAudioDeviceController()
     private let routingService: AudioRoutingService = CoreAudioTapRoutingService()
+    private let refreshQueue = DispatchQueue(label: "com.example.AudioMixerClone.refresh", qos: .utility)
     private var refreshTimer: Timer?
+    private var isRefreshInFlight = false
+    private var refreshGeneration = 0
 
     private var supportDirectory: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -37,7 +40,6 @@ final class MixerStore: ObservableObject {
         outputDevice = deviceController.defaultDevice(isInput: false)
         inputDevice = deviceController.defaultDevice(isInput: true)
         load()
-        refresh()
     }
 
     func start() {
@@ -45,7 +47,9 @@ final class MixerStore: ObservableObject {
             return
         }
 
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+        refresh()
+
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.refresh()
             }
@@ -53,10 +57,17 @@ final class MixerStore: ObservableObject {
     }
 
     func refresh() {
-        outputDevice = deviceController.defaultDevice(isInput: false)
-        inputDevice = deviceController.defaultDevice(isInput: true)
-        audioProcesses = routingService.audioProcesses()
-        runningApps = NSWorkspace.shared.runningApplications
+        guard !isRefreshInFlight else {
+            return
+        }
+
+        isRefreshInFlight = true
+        refreshGeneration += 1
+        let generation = refreshGeneration
+        LaunchDiagnostics.record("Refresh started")
+        scheduleRefreshTimeout(generation: generation)
+
+        let runningApplications: [RunningAudioApp] = NSWorkspace.shared.runningApplications
             .filter { $0.activationPolicy == .regular }
             .compactMap { application in
                 guard let bundleIdentifier = application.bundleIdentifier else {
@@ -73,12 +84,48 @@ final class MixerStore: ObservableObject {
             }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
 
-        for app in runningApps where profiles[app.id] == nil {
-            profiles[app.id] = AppAudioProfile.fresh(for: app, remember: settings.rememberAppProfiles)
-        }
+        refreshQueue.async { [weak self] in
+            let backgroundDeviceController = CoreAudioDeviceController()
+            let outputDevice = backgroundDeviceController.defaultDevice(isInput: false)
+            let inputDevice = backgroundDeviceController.defaultDevice(isInput: true)
+            let audioProcesses = CoreAudioTapRoutingService().audioProcesses()
 
-        reconcileActiveRoutes()
-        startSavedAutoRoutes()
+            Task { @MainActor in
+                guard let self else {
+                    return
+                }
+                guard self.refreshGeneration == generation else {
+                    return
+                }
+
+                self.outputDevice = outputDevice
+                self.inputDevice = inputDevice
+                self.audioProcesses = audioProcesses
+                self.runningApps = runningApplications
+
+                for app in self.runningApps where self.profiles[app.id] == nil {
+                    self.profiles[app.id] = AppAudioProfile.fresh(for: app, remember: self.settings.rememberAppProfiles)
+                }
+
+                self.reconcileActiveRoutes()
+                self.startSavedAutoRoutes()
+                self.isRefreshInFlight = false
+                LaunchDiagnostics.record("Refresh finished")
+            }
+        }
+    }
+
+    private func scheduleRefreshTimeout(generation: Int) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            guard isRefreshInFlight, refreshGeneration == generation else {
+                return
+            }
+
+            isRefreshInFlight = false
+            routingMessage = "Audio process refresh is taking longer than expected; mixer controls remain available."
+            LaunchDiagnostics.record("Refresh timed out")
+        }
     }
 
     func setOutputVolume(_ volume: Double) {
