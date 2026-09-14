@@ -1,6 +1,5 @@
 import AppKit
 import Combine
-import CoreAudio
 import Foundation
 import SwiftUI
 
@@ -19,12 +18,7 @@ final class MixerStore: ObservableObject {
 
     private let deviceController = CoreAudioDeviceController()
     private let routingService: AudioRoutingService = CoreAudioTapRoutingService()
-    private let refreshQueue = DispatchQueue(label: "com.example.AudioMixerClone.refresh", qos: .utility)
-    private let iconQueue = DispatchQueue(label: "com.example.AudioMixerClone.icons", qos: .utility)
     private var refreshTimer: Timer?
-    private var isRefreshInFlight = false
-    private var refreshGeneration = 0
-    private var iconGeneration = 0
 
     private var supportDirectory: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -40,9 +34,10 @@ final class MixerStore: ObservableObject {
     }
 
     init() {
-        outputDevice = Self.placeholderDevice(name: "Output Device", isInput: false)
-        inputDevice = Self.placeholderDevice(name: "Input Device", isInput: true)
+        outputDevice = deviceController.defaultDevice(isInput: false)
+        inputDevice = deviceController.defaultDevice(isInput: true)
         load()
+        refresh()
     }
 
     func start() {
@@ -50,9 +45,7 @@ final class MixerStore: ObservableObject {
             return
         }
 
-        refresh()
-
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.refresh()
             }
@@ -60,102 +53,10 @@ final class MixerStore: ObservableObject {
     }
 
     func refresh() {
-        refresh(includeAudioHardware: false)
-    }
-
-    func refreshAudioHardware() {
-        refresh(includeAudioHardware: true)
-    }
-
-    private func refresh(includeAudioHardware: Bool) {
-        guard !isRefreshInFlight else {
-            return
-        }
-
-        isRefreshInFlight = true
-        refreshGeneration += 1
-        let generation = refreshGeneration
-        LaunchDiagnostics.record(includeAudioHardware ? "Audio refresh started" : "App refresh started")
-        scheduleRefreshTimeout(generation: generation)
-
-        refreshQueue.async { [weak self] in
-            let runningApplications = Self.readRunningApplications()
-            let outputDevice: AudioDevice?
-            let inputDevice: AudioDevice?
-            let audioProcesses: [AudioProcessSnapshot]?
-
-            if includeAudioHardware {
-                LaunchDiagnostics.record("CoreAudio scan started")
-                let backgroundDeviceController = CoreAudioDeviceController()
-                outputDevice = backgroundDeviceController.defaultDevice(isInput: false)
-                inputDevice = backgroundDeviceController.defaultDevice(isInput: true)
-                audioProcesses = CoreAudioTapRoutingService().audioProcesses()
-                LaunchDiagnostics.record("CoreAudio scan finished")
-            } else {
-                outputDevice = nil
-                inputDevice = nil
-                audioProcesses = nil
-            }
-
-            Task { @MainActor in
-                guard let self else {
-                    return
-                }
-                guard self.refreshGeneration == generation else {
-                    return
-                }
-
-                if let outputDevice, let inputDevice, let audioProcesses {
-                    self.outputDevice = outputDevice
-                    self.inputDevice = inputDevice
-                    self.audioProcesses = audioProcesses
-                }
-                self.runningApps = runningApplications
-
-                for app in self.runningApps where self.profiles[app.id] == nil {
-                    self.profiles[app.id] = AppAudioProfile.fresh(for: app, remember: self.settings.rememberAppProfiles)
-                }
-
-                if includeAudioHardware {
-                    self.reconcileActiveRoutes()
-                    self.startSavedAutoRoutes()
-                }
-
-                self.isRefreshInFlight = false
-                LaunchDiagnostics.record(includeAudioHardware ? "Audio refresh finished" : "App refresh finished")
-                self.loadIcons(for: runningApplications)
-            }
-        }
-    }
-
-    private func scheduleRefreshTimeout(generation: Int) {
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 8_000_000_000)
-            guard isRefreshInFlight, refreshGeneration == generation else {
-                return
-            }
-
-            isRefreshInFlight = false
-            routingMessage = "Refresh is taking longer than expected; mixer controls remain available."
-            LaunchDiagnostics.record("Refresh timed out")
-        }
-    }
-
-    nonisolated private static func placeholderDevice(name: String, isInput: Bool) -> AudioDevice {
-        AudioDevice(
-            id: AudioObjectID(kAudioObjectUnknown),
-            uid: nil,
-            name: name,
-            volume: 0.75,
-            isMuted: false,
-            canSetVolume: false,
-            canSetMute: false,
-            isInput: isInput
-        )
-    }
-
-    nonisolated private static func readRunningApplications() -> [RunningAudioApp] {
-        NSWorkspace.shared.runningApplications
+        outputDevice = deviceController.defaultDevice(isInput: false)
+        inputDevice = deviceController.defaultDevice(isInput: true)
+        audioProcesses = routingService.audioProcesses()
+        runningApps = NSWorkspace.shared.runningApplications
             .filter { $0.activationPolicy == .regular }
             .compactMap { application in
                 guard let bundleIdentifier = application.bundleIdentifier else {
@@ -167,48 +68,17 @@ final class MixerStore: ObservableObject {
                     bundleIdentifier: bundleIdentifier,
                     name: application.localizedName ?? bundleIdentifier,
                     processIdentifier: application.processIdentifier,
-                    bundleURLPath: application.bundleURL?.path,
-                    icon: nil
+                    icon: application.icon
                 )
             }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-    }
 
-    private func loadIcons(for apps: [RunningAudioApp]) {
-        iconGeneration += 1
-        let generation = iconGeneration
-        let iconRequests = apps.compactMap { app -> (id: String, path: String)? in
-            guard let path = app.bundleURLPath else {
-                return nil
-            }
-
-            return (app.id, path)
+        for app in runningApps where profiles[app.id] == nil {
+            profiles[app.id] = AppAudioProfile.fresh(for: app, remember: settings.rememberAppProfiles)
         }
 
-        guard !iconRequests.isEmpty else {
-            return
-        }
-
-        iconQueue.async { [weak self] in
-            var icons: [String: NSImage] = [:]
-            for request in iconRequests {
-                let icon = NSWorkspace.shared.icon(forFile: request.path)
-                icon.size = NSSize(width: 64, height: 64)
-                icons[request.id] = icon
-            }
-
-            Task { @MainActor in
-                guard let self, self.iconGeneration == generation else {
-                    return
-                }
-
-                self.runningApps = self.runningApps.map { app in
-                    var updated = app
-                    updated.icon = icons[app.id]
-                    return updated
-                }
-            }
-        }
+        reconcileActiveRoutes()
+        startSavedAutoRoutes()
     }
 
     func setOutputVolume(_ volume: Double) {
@@ -284,10 +154,6 @@ final class MixerStore: ObservableObject {
             }
 
             if settings.hideAppsWithoutAudioProcesses {
-                guard !audioProcesses.isEmpty else {
-                    return true
-                }
-
                 return hasAudioProcess || profile?.autoRoute == true
             }
 

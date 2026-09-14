@@ -2,10 +2,6 @@ import Foundation
 
 enum LaunchDiagnostics {
     static func recordLaunch() {
-        record("Launched")
-    }
-
-    static func record(_ event: String) {
         let supportDirectory = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first?
@@ -18,7 +14,7 @@ enum LaunchDiagnostics {
         try? FileManager.default.createDirectory(at: supportDirectory, withIntermediateDirectories: true)
 
         let formatter = ISO8601DateFormatter()
-        let line = "\(event) \(formatter.string(from: Date()))\n"
+        let line = "Launched \(formatter.string(from: Date()))\n"
         let url = supportDirectory.appendingPathComponent("launch.log")
 
         if let handle = try? FileHandle(forWritingTo: url) {

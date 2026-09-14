@@ -22,7 +22,6 @@ struct AudioMixerCloneApp: App {
                     maxHeight: .infinity
                 )
                 .onAppear {
-                    LaunchDiagnostics.record("Main window appeared")
                     store.start()
                 }
         }
@@ -33,7 +32,6 @@ struct AudioMixerCloneApp: App {
                 .environmentObject(store)
                 .frame(width: 760, height: 520)
                 .onAppear {
-                    LaunchDiagnostics.record("Menu bar panel appeared")
                     store.start()
                 }
         } label: {

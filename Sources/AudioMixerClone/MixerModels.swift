@@ -17,14 +17,12 @@ struct RunningAudioApp: Identifiable, Equatable {
     var bundleIdentifier: String
     var name: String
     var processIdentifier: pid_t
-    var bundleURLPath: String?
     var icon: NSImage?
 
     static func == (lhs: RunningAudioApp, rhs: RunningAudioApp) -> Bool {
         lhs.id == rhs.id &&
         lhs.name == rhs.name &&
-        lhs.processIdentifier == rhs.processIdentifier &&
-        lhs.bundleURLPath == rhs.bundleURLPath
+        lhs.processIdentifier == rhs.processIdentifier
     }
 }
 
