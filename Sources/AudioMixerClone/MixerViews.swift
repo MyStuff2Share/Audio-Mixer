@@ -1187,7 +1187,7 @@ struct SettingsView: View {
                         .frame(width: 220)
                     }
 
-                    SettingsToggleRow(title: "Dock mixer in menu bar", binding: settingsBinding(\.dockInMenuBar))
+                    SettingsToggleRow(title: "Dock mixer in menu bar", binding: menuBarDockingBinding)
                 }
 
                 SettingsSectionBox(title: "Profiles") {
@@ -1228,6 +1228,21 @@ struct SettingsView: View {
             set: { newValue in
                 store.settings[keyPath: keyPath] = newValue
                 store.saveSettings()
+            }
+        )
+    }
+
+    private var menuBarDockingBinding: Binding<Bool> {
+        Binding(
+            get: { store.settings.dockInMenuBar },
+            set: { isEnabled in
+                store.settings.dockInMenuBar = isEnabled
+                store.settings.hasConfiguredMenuBarDocking = true
+                store.saveSettings()
+                NSApplication.shared.setActivationPolicy(isEnabled ? .accessory : .regular)
+                if isEnabled == false {
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                }
             }
         )
     }
@@ -1404,8 +1419,8 @@ struct HelpView: View {
                 }
 
                 HelpSection(title: "Menu Bar Docking", symbol: "menubar.rectangle") {
-                    HelpParagraph("Turn on Dock mixer in menu bar in Settings > Appearance to keep Audio Mixer available from the macOS menu bar.")
-                    HelpParagraph("Turning it off removes the menu-bar control while keeping the normal app window and Dock behavior.")
+                    HelpParagraph("Turn on Dock mixer in menu bar in Settings > Appearance to keep Audio Mixer available from the macOS menu bar without a persistent Dock icon.")
+                    HelpParagraph("Turning it off restores normal Dock behavior while keeping the menu-bar control available.")
                 }
 
                 HelpSection(title: "Sidebar Dashboard", symbol: "sidebar.left") {

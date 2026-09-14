@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 @main
@@ -22,17 +23,17 @@ struct AudioMixerCloneApp: App {
                     maxHeight: .infinity
                 )
                 .onAppear {
-                    store.start()
+                    startStoreAndApplyPresentation()
                 }
         }
         .defaultSize(width: 760, height: 520)
 
-        MenuBarExtra(isInserted: menuBarDockingBinding) {
+        MenuBarExtra {
             MixerPanel()
                 .environmentObject(store)
                 .frame(width: 760, height: 520)
                 .onAppear {
-                    store.start()
+                    startStoreAndApplyPresentation()
                 }
         } label: {
             Label("Audio Mixer", systemImage: store.isEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
@@ -88,13 +89,12 @@ struct AudioMixerCloneApp: App {
         store.saveSettings()
     }
 
-    private var menuBarDockingBinding: Binding<Bool> {
-        Binding(
-            get: { store.settings.dockInMenuBar },
-            set: { isEnabled in
-                store.settings.dockInMenuBar = isEnabled
-                store.saveSettings()
-            }
-        )
+    private func startStoreAndApplyPresentation() {
+        store.start()
+        applyActivationPolicy()
+    }
+
+    private func applyActivationPolicy() {
+        NSApplication.shared.setActivationPolicy(store.settings.dockInMenuBar ? .accessory : .regular)
     }
 }
