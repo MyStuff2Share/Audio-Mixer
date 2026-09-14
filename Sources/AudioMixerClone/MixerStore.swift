@@ -20,9 +20,11 @@ final class MixerStore: ObservableObject {
     private let deviceController = CoreAudioDeviceController()
     private let routingService: AudioRoutingService = CoreAudioTapRoutingService()
     private let refreshQueue = DispatchQueue(label: "com.example.AudioMixerClone.refresh", qos: .utility)
+    private let iconQueue = DispatchQueue(label: "com.example.AudioMixerClone.icons", qos: .utility)
     private var refreshTimer: Timer?
     private var isRefreshInFlight = false
     private var refreshGeneration = 0
+    private var iconGeneration = 0
 
     private var supportDirectory: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -121,6 +123,7 @@ final class MixerStore: ObservableObject {
 
                 self.isRefreshInFlight = false
                 LaunchDiagnostics.record(includeAudioHardware ? "Audio refresh finished" : "App refresh finished")
+                self.loadIcons(for: runningApplications)
             }
         }
     }
@@ -164,10 +167,48 @@ final class MixerStore: ObservableObject {
                     bundleIdentifier: bundleIdentifier,
                     name: application.localizedName ?? bundleIdentifier,
                     processIdentifier: application.processIdentifier,
+                    bundleURLPath: application.bundleURL?.path,
                     icon: nil
                 )
             }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    private func loadIcons(for apps: [RunningAudioApp]) {
+        iconGeneration += 1
+        let generation = iconGeneration
+        let iconRequests = apps.compactMap { app -> (id: String, path: String)? in
+            guard let path = app.bundleURLPath else {
+                return nil
+            }
+
+            return (app.id, path)
+        }
+
+        guard !iconRequests.isEmpty else {
+            return
+        }
+
+        iconQueue.async { [weak self] in
+            var icons: [String: NSImage] = [:]
+            for request in iconRequests {
+                let icon = NSWorkspace.shared.icon(forFile: request.path)
+                icon.size = NSSize(width: 64, height: 64)
+                icons[request.id] = icon
+            }
+
+            Task { @MainActor in
+                guard let self, self.iconGeneration == generation else {
+                    return
+                }
+
+                self.runningApps = self.runningApps.map { app in
+                    var updated = app
+                    updated.icon = icons[app.id]
+                    return updated
+                }
+            }
+        }
     }
 
     func setOutputVolume(_ volume: Double) {
