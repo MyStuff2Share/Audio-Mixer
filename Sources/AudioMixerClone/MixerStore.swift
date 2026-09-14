@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import CoreAudio
 import Foundation
 import SwiftUI
 
@@ -37,8 +38,8 @@ final class MixerStore: ObservableObject {
     }
 
     init() {
-        outputDevice = deviceController.defaultDevice(isInput: false)
-        inputDevice = deviceController.defaultDevice(isInput: true)
+        outputDevice = Self.placeholderDevice(name: "Output Device", isInput: false)
+        inputDevice = Self.placeholderDevice(name: "Input Device", isInput: true)
         load()
     }
 
@@ -67,24 +68,8 @@ final class MixerStore: ObservableObject {
         LaunchDiagnostics.record("Refresh started")
         scheduleRefreshTimeout(generation: generation)
 
-        let runningApplications: [RunningAudioApp] = NSWorkspace.shared.runningApplications
-            .filter { $0.activationPolicy == .regular }
-            .compactMap { application in
-                guard let bundleIdentifier = application.bundleIdentifier else {
-                    return nil
-                }
-
-                return RunningAudioApp(
-                    id: bundleIdentifier,
-                    bundleIdentifier: bundleIdentifier,
-                    name: application.localizedName ?? bundleIdentifier,
-                    processIdentifier: application.processIdentifier,
-                    icon: application.icon
-                )
-            }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-
         refreshQueue.async { [weak self] in
+            let runningApplications = Self.readRunningApplications()
             let backgroundDeviceController = CoreAudioDeviceController()
             let outputDevice = backgroundDeviceController.defaultDevice(isInput: false)
             let inputDevice = backgroundDeviceController.defaultDevice(isInput: true)
@@ -126,6 +111,38 @@ final class MixerStore: ObservableObject {
             routingMessage = "Audio process refresh is taking longer than expected; mixer controls remain available."
             LaunchDiagnostics.record("Refresh timed out")
         }
+    }
+
+    nonisolated private static func placeholderDevice(name: String, isInput: Bool) -> AudioDevice {
+        AudioDevice(
+            id: AudioObjectID(kAudioObjectUnknown),
+            uid: nil,
+            name: name,
+            volume: 0.75,
+            isMuted: false,
+            canSetVolume: false,
+            canSetMute: false,
+            isInput: isInput
+        )
+    }
+
+    nonisolated private static func readRunningApplications() -> [RunningAudioApp] {
+        NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular }
+            .compactMap { application in
+                guard let bundleIdentifier = application.bundleIdentifier else {
+                    return nil
+                }
+
+                return RunningAudioApp(
+                    id: bundleIdentifier,
+                    bundleIdentifier: bundleIdentifier,
+                    name: application.localizedName ?? bundleIdentifier,
+                    processIdentifier: application.processIdentifier,
+                    icon: nil
+                )
+            }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     func setOutputVolume(_ volume: Double) {
