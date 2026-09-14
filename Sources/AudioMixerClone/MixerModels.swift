@@ -123,6 +123,7 @@ enum MixerInterfaceStyle: String, Codable, CaseIterable, Identifiable {
 
 struct MixerSettings: Codable, Equatable {
     var interfaceStyle: MixerInterfaceStyle = .sidebarDashboard
+    var dockInMenuBar = true
     var rememberAppProfiles = true
     var showInactiveProfiles = false
     var hideAppsWithoutAudioProcesses = true
@@ -133,6 +134,7 @@ struct MixerSettings: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case interfaceStyle
+        case dockInMenuBar
         case rememberAppProfiles
         case showInactiveProfiles
         case hideAppsWithoutAudioProcesses
@@ -147,6 +149,7 @@ struct MixerSettings: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         interfaceStyle = try container.decodeIfPresent(MixerInterfaceStyle.self, forKey: .interfaceStyle) ?? .sidebarDashboard
+        dockInMenuBar = try container.decodeIfPresent(Bool.self, forKey: .dockInMenuBar) ?? true
         rememberAppProfiles = try container.decodeIfPresent(Bool.self, forKey: .rememberAppProfiles) ?? true
         showInactiveProfiles = try container.decodeIfPresent(Bool.self, forKey: .showInactiveProfiles) ?? false
         hideAppsWithoutAudioProcesses = try container.decodeIfPresent(Bool.self, forKey: .hideAppsWithoutAudioProcesses) ?? true

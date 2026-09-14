@@ -1186,6 +1186,8 @@ struct SettingsView: View {
                         .labelsHidden()
                         .frame(width: 220)
                     }
+
+                    SettingsToggleRow(title: "Dock mixer in menu bar", binding: settingsBinding(\.dockInMenuBar))
                 }
 
                 SettingsSectionBox(title: "Profiles") {
@@ -1399,6 +1401,11 @@ struct HelpView: View {
                     HelpShortcut(keys: "⌘3", label: "Routing Map")
                     HelpShortcut(keys: "⌘4", label: "Card Stack")
                     HelpParagraph("You can also choose the interface style in Settings > Appearance.")
+                }
+
+                HelpSection(title: "Menu Bar Docking", symbol: "menubar.rectangle") {
+                    HelpParagraph("Turn on Dock mixer in menu bar in Settings > Appearance to keep Audio Mixer available from the macOS menu bar.")
+                    HelpParagraph("Turning it off removes the menu-bar control while keeping the normal app window and Dock behavior.")
                 }
 
                 HelpSection(title: "Sidebar Dashboard", symbol: "sidebar.left") {
