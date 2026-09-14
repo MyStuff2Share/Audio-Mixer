@@ -1383,14 +1383,67 @@ struct HelpView: View {
 
                 HelpSection(title: "Getting Started", symbol: "play.circle.fill") {
                     HelpStep(number: 1, text: "Start audio in the app you want to control.")
-                    HelpStep(number: 2, text: "Find the app in the mixer list. The green dot means Core Audio sees active output.")
-                    HelpStep(number: 3, text: "Move the app slider or click the circular route button. Audio Mixer will create a route for that app.")
+                    HelpStep(number: 2, text: "Find the app in Mixer or Routes. The green dot means Core Audio sees active output for that app.")
+                    HelpStep(number: 3, text: "Move the app slider or click the circular route button. Audio Mixer creates a Core Audio route for that app when routing is enabled.")
                     HelpStep(number: 4, text: "Grant system audio capture permission if macOS asks.")
                 }
 
-                HelpSection(title: "Per-App Routing", symbol: "arrow.triangle.branch") {
-                    HelpParagraph("The circular route button turns app routing on or off. When it is orange, the app is passing through Audio Mixer’s tap and IOProc, so volume, mute, and balance changes affect that app.")
-                    HelpParagraph("Browsers and Electron apps may play audio through helper processes. Audio Mixer matches those helper processes automatically when possible.")
+                HelpSection(title: "Main Sidebar", symbol: "sidebar.left") {
+                    HelpBullet("Mixer is the everyday view for device volume, app volume, mute, and route toggles.")
+                    HelpBullet("Devices shows the current input and output devices, their volume controls, mute support, and Core Audio UIDs.")
+                    HelpBullet("Routes focuses on which apps are routed through Audio Mixer’s Core Audio tap backend.")
+                    HelpBullet("Hot Keys opens the shortcut reference and volume step control.")
+                    HelpBullet("Settings opens preferences for interface style, saved profiles, filters, startup, and shortcut step size.")
+                }
+
+                HelpSection(title: "Mixer View", symbol: "slider.horizontal.3") {
+                    HelpBullet("The output and input cards show the current Core Audio default devices.")
+                    HelpBullet("Each app row has an app icon, app name, activity dot, mute button, volume slider, circular route button, and advanced menu.")
+                    HelpBullet("The app volume slider changes the saved app profile. If Auto Route is on, moving it also tries to start routing for that app.")
+                    HelpBullet("The mute button toggles the app profile mute state. Routed apps are muted in the tap path; unrouted apps save the preference for when routing starts.")
+                    HelpBullet("The advanced slider icon opens per-app controls such as balance and mute.")
+                }
+
+                HelpSection(title: "Routes", symbol: "arrow.triangle.branch") {
+                    HelpParagraph("Routes shows the apps that Audio Mixer can route through the Core Audio tap backend. A route is the private audio path Audio Mixer creates for one app so it can apply per-app volume, mute, and balance.")
+                    HelpBullet("The circular route button starts or stops routing for an app. Orange means the app is currently routed through Audio Mixer.")
+                    HelpBullet("When routing starts, Audio Mixer finds the app’s Core Audio process objects, creates a private process tap, creates a private aggregate device, starts an IOProc, and applies the app profile in real time.")
+                    HelpBullet("When routing stops, Audio Mixer tears down the IOProc, aggregate device, and tap for that app.")
+                    HelpBullet("Browsers and Electron apps often play audio from helper processes. Audio Mixer matches helper bundle IDs that begin with the main app’s bundle ID.")
+                    HelpBullet("If an app restarts or its helper process changes, Audio Mixer attempts route cleanup or recovery during refresh.")
+                    HelpBullet("Routes target the current default output path used when routing starts. Per-app output-device selection is not implemented yet.")
+                }
+
+                HelpSection(title: "Route States", symbol: "record.circle") {
+                    HelpBullet("Gray route circle: the app is not currently routed. Its profile is saved, but app volume controls may not affect live audio yet.")
+                    HelpBullet("Orange route circle: routing is active. Volume, mute, and balance are applied to that app’s tapped audio.")
+                    HelpBullet("Green activity dot: Core Audio reports active output for that app or one of its helper processes.")
+                    HelpBullet("Gray activity dot: Core Audio sees an audio process, but it is not currently reporting active output.")
+                    HelpBullet("Status messages above the rows report route creation, cleanup, failures, and stream details such as channel count and sample rate.")
+                }
+
+                HelpSection(title: "Devices", symbol: "speaker.wave.2.fill") {
+                    HelpBullet("Output controls the current default output device when macOS exposes volume or mute controls for it.")
+                    HelpBullet("Input controls the current default input device when macOS exposes volume or mute controls for it.")
+                    HelpBullet("Some devices, HDMI outputs, virtual devices, and aggregate devices do not expose settable volume or mute; disabled sliders mean macOS does not allow direct control.")
+                    HelpBullet("Device Notes show the Core Audio UID used when Audio Mixer creates aggregate routes.")
+                    HelpBullet("Refresh reloads device state, running apps, audio processes, and route state.")
+                }
+
+                HelpSection(title: "Audio Processes", symbol: "waveform.path.ecg") {
+                    HelpParagraph("Audio Processes is a diagnostic table for the Core Audio process list. Use it when an app is missing, routing does not start, or a browser uses helper processes.")
+                    HelpBullet("Output indicates whether Core Audio reports that process as producing output.")
+                    HelpBullet("PID is the system process ID if Core Audio exposes one.")
+                    HelpBullet("Object is the Core Audio process object ID used for process taps.")
+                    HelpBullet("Bundle ID is the identifier Audio Mixer uses to match app rows to audio helper processes.")
+                }
+
+                HelpSection(title: "Filters And Profiles", symbol: "line.3.horizontal.decrease.circle") {
+                    HelpBullet("Active Only shows apps with active audio output, plus saved auto-route apps that currently expose audio processes.")
+                    HelpBullet("Hide apps without audio processes removes apps that Core Audio does not currently expose as audio-capable.")
+                    HelpBullet("Show inactive saved apps keeps remembered profiles visible even when an app is not currently active.")
+                    HelpBullet("Remember app profiles saves volume, mute, balance, and auto-route choices by bundle identifier.")
+                    HelpBullet("Auto-route when adjusting app controls starts routing when you move an app slider, mute an app, or change balance.")
                 }
 
                 HelpSection(title: "Interface Styles", symbol: "rectangle.3.group") {
@@ -1398,19 +1451,32 @@ struct HelpView: View {
                     HelpShortcut(keys: "⌘2", label: "Pro Console")
                     HelpShortcut(keys: "⌘3", label: "Routing Map")
                     HelpShortcut(keys: "⌘4", label: "Card Stack")
-                    HelpParagraph("You can also choose the interface style in Settings > Appearance.")
+                    HelpParagraph("You can also choose the interface style in Settings > Appearance. The styles share the same audio backend and saved profiles.")
+                    HelpBullet("Sidebar Dashboard is the default view with Mixer, Devices, Routes, Hot Keys, and Settings sections.")
+                    HelpBullet("Pro Console shows apps as compact channel strips.")
+                    HelpBullet("Routing Map emphasizes route flow into the output device.")
+                    HelpBullet("Card Stack presents devices and active apps as stacked panels.")
                 }
 
-                HelpSection(title: "Sidebar Dashboard", symbol: "sidebar.left") {
-                    HelpParagraph("Mixer shows app volume rows. Devices shows input and output device controls. Routes shows routing status, audio process counts, and per-app route toggles.")
-                    HelpParagraph("Audio Processes is a debug view for inspecting the Core Audio process list.")
+                HelpSection(title: "Settings", symbol: "gearshape.fill") {
+                    HelpBullet("Appearance changes the interface style.")
+                    HelpBullet("Profiles controls saved app profiles, inactive saved apps, audio-process filtering, active-only filtering, and auto-route behavior.")
+                    HelpBullet("Startup contains the launch-at-login preference.")
+                    HelpBullet("Audio sets the shortcut volume step used by hot key actions.")
+                }
+
+                HelpSection(title: "Hot Keys", symbol: "keyboard") {
+                    HelpParagraph("The Hot Keys window shows the configured actions and shortcut step size. The current implementation exposes the shortcut reference and volume-step setting; global hot-key registration is still a development target.")
                 }
 
                 HelpSection(title: "Troubleshooting", symbol: "wrench.and.screwdriver.fill") {
-                    HelpBullet("If an app slider does nothing, make sure the route button is orange.")
-                    HelpBullet("If an app is missing, turn off Active Only or use Audio Processes to inspect its bundle ID.")
-                    HelpBullet("If routing fails after an app restarts, toggle the route off and on again.")
+                    HelpBullet("If an app slider does not change live audio, make sure the route button is orange.")
+                    HelpBullet("If an app is missing, turn off Active Only, disable Hide apps without audio processes, or inspect Audio Processes.")
+                    HelpBullet("If a browser does not respond, start playback first, refresh, then route the browser again so helper processes are visible.")
+                    HelpBullet("If routing fails after an app restarts, toggle the route off and on, or quit and reopen that app.")
                     HelpBullet("If macOS denied capture permission, enable it in System Settings and relaunch Audio Mixer.")
+                    HelpBullet("If device sliders are disabled, that device does not expose settable Core Audio volume or mute controls.")
+                    HelpBullet("If a route reports zero audio processes, start playback in that app before routing.")
                 }
 
                 HelpSection(title: "Keyboard And Windows", symbol: "keyboard") {
