@@ -108,8 +108,18 @@ struct MixerPanel: View {
             routingStatus
 
             HStack(spacing: 12) {
-                deviceSummaryCard(title: "Output", icon: "speaker.wave.2.fill", device: store.outputDevice)
-                deviceSummaryCard(title: "Input", icon: "mic.fill", device: store.inputDevice)
+                deviceSummaryCard(
+                    title: "Output",
+                    icon: "speaker.wave.2.fill",
+                    device: store.outputDevice,
+                    volume: Binding(get: { store.outputDevice.volume }, set: { store.setOutputVolume($0) })
+                )
+                deviceSummaryCard(
+                    title: "Input",
+                    icon: "mic.fill",
+                    device: store.inputDevice,
+                    volume: Binding(get: { store.inputDevice.volume }, set: { store.setInputVolume($0) })
+                )
             }
 
             ScrollView {
@@ -346,8 +356,18 @@ struct MixerPanel: View {
                 }
 
                 HStack(spacing: 12) {
-                    deviceSummaryCard(title: "Output Device", icon: "speaker.wave.2.fill", device: store.outputDevice)
-                    deviceSummaryCard(title: "Input", icon: "mic.fill", device: store.inputDevice)
+                    deviceSummaryCard(
+                        title: "Output Device",
+                        icon: "speaker.wave.2.fill",
+                        device: store.outputDevice,
+                        volume: Binding(get: { store.outputDevice.volume }, set: { store.setOutputVolume($0) })
+                    )
+                    deviceSummaryCard(
+                        title: "Input",
+                        icon: "mic.fill",
+                        device: store.inputDevice,
+                        volume: Binding(get: { store.inputDevice.volume }, set: { store.setInputVolume($0) })
+                    )
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -465,7 +485,7 @@ struct MixerPanel: View {
         .help(title)
     }
 
-    private func deviceSummaryCard(title: String, icon: String, device: AudioDevice) -> some View {
+    private func deviceSummaryCard(title: String, icon: String, device: AudioDevice, volume: Binding<Double>) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: icon)
@@ -487,8 +507,10 @@ struct MixerPanel: View {
                 Spacer()
             }
 
-            ProgressView(value: device.volume)
+            Slider(value: volume, in: 0...1)
                 .tint(.orange)
+                .disabled(!device.canSetVolume)
+                .help(device.canSetVolume ? "Adjust \(title.lowercased()) volume" : "\(device.name) does not expose settable volume")
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
