@@ -126,7 +126,7 @@ struct MixerSettings: Codable, Equatable {
     var rememberAppProfiles = true
     var showInactiveProfiles = false
     var hideAppsWithoutAudioProcesses = true
-    var showActiveAudioOnly = false
+    var showActiveAudioOnly = true
     var autoRouteWhenAdjusting = true
     var launchAtLogin = false
     var shortcutStep = 5.0
@@ -150,7 +150,7 @@ struct MixerSettings: Codable, Equatable {
         rememberAppProfiles = try container.decodeIfPresent(Bool.self, forKey: .rememberAppProfiles) ?? true
         showInactiveProfiles = try container.decodeIfPresent(Bool.self, forKey: .showInactiveProfiles) ?? false
         hideAppsWithoutAudioProcesses = try container.decodeIfPresent(Bool.self, forKey: .hideAppsWithoutAudioProcesses) ?? true
-        showActiveAudioOnly = try container.decodeIfPresent(Bool.self, forKey: .showActiveAudioOnly) ?? false
+        showActiveAudioOnly = try container.decodeIfPresent(Bool.self, forKey: .showActiveAudioOnly) ?? true
         autoRouteWhenAdjusting = try container.decodeIfPresent(Bool.self, forKey: .autoRouteWhenAdjusting) ?? true
         launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? false
         shortcutStep = try container.decodeIfPresent(Double.self, forKey: .shortcutStep) ?? 5.0

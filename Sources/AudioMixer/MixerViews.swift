@@ -112,13 +112,15 @@ struct MixerPanel: View {
                     title: "Output",
                     icon: "speaker.wave.2.fill",
                     device: store.outputDevice,
-                    volume: Binding(get: { store.outputDevice.volume }, set: { store.setOutputVolume($0) })
+                    volume: Binding(get: { store.outputDevice.volume }, set: { store.setOutputVolume($0) }),
+                    isMuted: Binding(get: { store.outputDevice.isMuted }, set: { store.setOutputMuted($0) })
                 )
                 deviceSummaryCard(
                     title: "Input",
                     icon: "mic.fill",
                     device: store.inputDevice,
-                    volume: Binding(get: { store.inputDevice.volume }, set: { store.setInputVolume($0) })
+                    volume: Binding(get: { store.inputDevice.volume }, set: { store.setInputVolume($0) }),
+                    isMuted: Binding(get: { store.inputDevice.isMuted }, set: { store.setInputMuted($0) })
                 )
             }
 
@@ -360,13 +362,15 @@ struct MixerPanel: View {
                         title: "Output Device",
                         icon: "speaker.wave.2.fill",
                         device: store.outputDevice,
-                        volume: Binding(get: { store.outputDevice.volume }, set: { store.setOutputVolume($0) })
+                        volume: Binding(get: { store.outputDevice.volume }, set: { store.setOutputVolume($0) }),
+                        isMuted: Binding(get: { store.outputDevice.isMuted }, set: { store.setOutputMuted($0) })
                     )
                     deviceSummaryCard(
                         title: "Input",
                         icon: "mic.fill",
                         device: store.inputDevice,
-                        volume: Binding(get: { store.inputDevice.volume }, set: { store.setInputVolume($0) })
+                        volume: Binding(get: { store.inputDevice.volume }, set: { store.setInputVolume($0) }),
+                        isMuted: Binding(get: { store.inputDevice.isMuted }, set: { store.setInputMuted($0) })
                     )
                 }
 
@@ -485,7 +489,7 @@ struct MixerPanel: View {
         .help(title)
     }
 
-    private func deviceSummaryCard(title: String, icon: String, device: AudioDevice, volume: Binding<Double>) -> some View {
+    private func deviceSummaryCard(title: String, icon: String, device: AudioDevice, volume: Binding<Double>, isMuted: Binding<Bool>? = nil) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: icon)
@@ -507,10 +511,25 @@ struct MixerPanel: View {
                 Spacer()
             }
 
-            Slider(value: volume, in: 0...1)
-                .tint(.orange)
-                .disabled(!device.canSetVolume)
-                .help(device.canSetVolume ? "Adjust \(title.lowercased()) volume" : "\(device.name) does not expose settable volume")
+            HStack(spacing: 10) {
+                Slider(value: volume, in: 0...1)
+                    .tint(.orange)
+                    .disabled(!device.canSetVolume)
+                    .help(device.canSetVolume ? "Adjust \(title.lowercased()) volume" : "\(device.name) does not expose settable volume")
+
+                if let isMuted, device.canSetMute {
+                    Button {
+                        isMuted.wrappedValue.toggle()
+                    } label: {
+                        Image(systemName: isMuted.wrappedValue ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                            .font(.title3)
+                            .foregroundStyle(isMuted.wrappedValue ? .red : .orange)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: 24)
+                    .help(isMuted.wrappedValue ? "Unmute \(title.lowercased())" : "Mute \(title.lowercased())")
+                }
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1419,7 +1438,8 @@ struct HelpView: View {
                 }
 
                 HelpSection(title: "Mixer View", symbol: "slider.horizontal.3") {
-                    HelpBullet("The output and input cards show the current Core Audio default devices.")
+                    HelpBullet("The output and input cards at the top show the current Core Audio default devices with volume sliders and mute buttons.")
+                    HelpBullet("The device mute button (speaker icon) toggles mute for the output or input device. Orange means unmuted; red means muted.")
                     HelpBullet("Each app row has an app icon, app name, activity dot, mute button, volume slider, circular route button, and advanced menu.")
                     HelpBullet("The app volume slider changes the saved app profile. If Auto Route is on, moving it also tries to start routing for that app.")
                     HelpBullet("The mute button toggles the app profile mute state. Routed apps are muted in the tap path; unrouted apps save the preference for when routing starts.")
@@ -1445,8 +1465,9 @@ struct HelpView: View {
                 }
 
                 HelpSection(title: "Devices", symbol: "speaker.wave.2.fill") {
-                    HelpBullet("Output controls the current default output device when macOS exposes volume or mute controls for it.")
-                    HelpBullet("Input controls the current default input device when macOS exposes volume or mute controls for it.")
+                    HelpBullet("Output controls the current default output device with a volume slider and mute button when macOS exposes those controls.")
+                    HelpBullet("Input controls the current default input device with a volume slider and mute button when macOS exposes those controls.")
+                    HelpBullet("The device mute button (speaker icon) toggles mute for that device. Orange means unmuted; red means muted. The button only appears if the device supports mute.")
                     HelpBullet("Some devices, HDMI outputs, virtual devices, and aggregate devices do not expose settable volume or mute; disabled sliders mean macOS does not allow direct control.")
                     HelpBullet("Device Notes show the Core Audio UID used when Audio Mixer creates aggregate routes.")
                     HelpBullet("Refresh reloads device state, running apps, audio processes, and route state.")

@@ -3,14 +3,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "AudioMixerClone",
+    name: "AudioMixer",
     platforms: [
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "AudioMixerClone", targets: ["AudioMixerClone"])
+        .executable(name: "AudioMixer", targets: ["AudioMixer"])
     ],
     targets: [
-        .executableTarget(name: "AudioMixerClone")
+        .executableTarget(name: "AudioMixer")
     ]
 )

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct AudioMixerCloneApp: App {
+struct AudioMixerApp: App {
     @StateObject private var store = MixerStore()
     @Environment(\.openWindow) private var openWindow
 

@@ -5,7 +5,7 @@ enum LaunchDiagnostics {
         let supportDirectory = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first?
-            .appendingPathComponent("AudioMixerClone", isDirectory: true)
+            .appendingPathComponent("AudioMixer", isDirectory: true)
 
         guard let supportDirectory else {
             return

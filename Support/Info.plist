@@ -7,11 +7,11 @@
     <key>CFBundleDisplayName</key>
     <string>Audio Mixer</string>
     <key>CFBundleExecutable</key>
-    <string>AudioMixerClone</string>
+    <string>AudioMixer</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.example.AudioMixerClone</string>
+    <string>com.example.AudioMixer</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>

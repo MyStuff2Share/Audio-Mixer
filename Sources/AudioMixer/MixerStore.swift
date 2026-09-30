@@ -22,7 +22,7 @@ final class MixerStore: ObservableObject {
 
     private var supportDirectory: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return base.appendingPathComponent("AudioMixerClone", isDirectory: true)
+        return base.appendingPathComponent("AudioMixer", isDirectory: true)
     }
 
     private var profilesURL: URL {
@@ -60,6 +60,10 @@ final class MixerStore: ObservableObject {
             .filter { $0.activationPolicy == .regular }
             .compactMap { application in
                 guard let bundleIdentifier = application.bundleIdentifier else {
+                    return nil
+                }
+
+                if bundleIdentifier == "com.example.AudioMixer" {
                     return nil
                 }
 
@@ -153,11 +157,7 @@ final class MixerStore: ObservableObject {
                 return isActiveOutput || (profile?.autoRoute == true && hasAudioProcess)
             }
 
-            if settings.hideAppsWithoutAudioProcesses {
-                return hasAudioProcess || profile?.autoRoute == true
-            }
-
-            return true
+            return hasAudioProcess
         }
     }
 

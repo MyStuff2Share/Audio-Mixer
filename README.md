@@ -60,7 +60,7 @@ For public distribution, replace ad-hoc signing with Developer ID signing and no
 ## Install Locally
 
 ```bash
-rm -rf "/Applications/Audio Mixer.app" /Applications/AudioMixerClone.app
+rm -rf "/Applications/Audio Mixer.app"
 cp -R "dist/Audio Mixer.app" /Applications/
 open "/Applications/Audio Mixer.app"
 ```
@@ -90,8 +90,8 @@ Use **Audio Processes** in the app to inspect the Core Audio process list. This 
 ## Project Layout
 
 ```text
-Sources/AudioMixerClone/
-  AudioMixerCloneApp.swift
+Sources/AudioMixer/
+  AudioMixerApp.swift
   AudioRoutingService.swift
   CoreAudioDeviceController.swift
   LaunchDiagnostics.swift

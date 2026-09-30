@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="Audio Mixer"
-EXECUTABLE_NAME="AudioMixerClone"
+EXECUTABLE_NAME="AudioMixer"
 CONFIGURATION="${CONFIGURATION:-release}"
 DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 
@@ -18,9 +18,9 @@ MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 DMG_PATH="$DIST_DIR/$APP_NAME.dmg"
 ZIP_PATH="$DIST_DIR/$APP_NAME.zip"
-LEGACY_APP_PATH="$DIST_DIR/AudioMixerClone.app"
-LEGACY_DMG_PATH="$DIST_DIR/AudioMixerClone.dmg"
-LEGACY_ZIP_PATH="$DIST_DIR/AudioMixerClone.zip"
+LEGACY_APP_PATH="$DIST_DIR/AudioMixer.app"
+LEGACY_DMG_PATH="$DIST_DIR/AudioMixer.dmg"
+LEGACY_ZIP_PATH="$DIST_DIR/AudioMixer.zip"
 
 mkdir -p "$CLANG_MODULE_CACHE_PATH" "$DIST_DIR"
 

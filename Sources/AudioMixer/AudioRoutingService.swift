@@ -137,7 +137,7 @@ final class CoreAudioTapRoutingService: AudioRoutingService {
             balance: profile.balance
         )
         let dspState = RouteDSPState(parameters: parameters)
-        let ioQueue = DispatchQueue(label: "com.example.AudioMixerClone.route.\(app.bundleIdentifier)", qos: .userInteractive)
+        let ioQueue = DispatchQueue(label: "com.example.AudioMixer.route.\(app.bundleIdentifier)", qos: .userInteractive)
         var ioProcID: AudioDeviceIOProcID?
         let createIOStatus = AudioDeviceCreateIOProcIDWithBlock(&ioProcID, aggregateDeviceID, ioQueue) { _, inputData, _, outputData, _ in
             dspState.render(inputData: inputData, outputData: outputData)
@@ -437,7 +437,7 @@ final class CoreAudioTapRoutingService: AudioRoutingService {
     }
 
     private func createAggregateDevice(appName: String, outputDeviceUID: String, tapUID: String) throws -> AudioObjectID {
-        let aggregateUID = "com.example.AudioMixerClone.aggregate.\(UUID().uuidString)"
+        let aggregateUID = "com.example.AudioMixer.aggregate.\(UUID().uuidString)"
         let description: [String: Any] = [
             kAudioAggregateDeviceNameKey: "Audio Mixer Route - \(appName)",
             kAudioAggregateDeviceUIDKey: aggregateUID,
