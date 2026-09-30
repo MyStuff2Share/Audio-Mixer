@@ -1589,10 +1589,27 @@ struct HelpView: View {
                     HelpBullet("If a route reports zero audio processes, start playback in that app before routing.")
                 }
 
+                HelpSection(title: "Menu Bar Widget", symbol: "speaker.wave.2.fill") {
+                    HelpBullet("Click the speaker icon in your menu bar to open the quick-access widget without opening the main window.")
+                    HelpBullet("Output section shows the current output device volume slider with mute button. Running audio apps are listed below with individual volume sliders for direct per-app control.")
+                    HelpBullet("Input section shows the current input device (microphone) volume slider with mute button.")
+                    HelpBullet("Favorite Apps are shown at the bottom of the widget for quick volume access to your pinned apps.")
+                    HelpBullet("Open GUI button (↗) brings the main application window to focus.")
+                    HelpBullet("Quit button (⏻) completely closes the app from the menu bar.")
+                }
+
                 HelpSection(title: "Keyboard And Windows", symbol: "keyboard") {
                     HelpShortcut(keys: "Esc", label: "Close Settings or this Help window")
-                    HelpShortcut(keys: "⌘Q", label: "Quit Audio Mixer")
+                    HelpShortcut(keys: "⌘W", label: "Close main window (keeps app running in menu bar)")
+                    HelpShortcut(keys: "⌘Q", label: "Quit Audio Mixer completely")
                     HelpShortcut(keys: "⌘?", label: "Open this guide")
+                }
+
+                HelpSection(title: "Window Behavior", symbol: "rectangle.fill.badge.xmark") {
+                    HelpBullet("Clicking the red close button (X) or pressing Cmd+W closes the main window but keeps the app running in the menu bar.")
+                    HelpBullet("The app automatically hides from the dock when the window is closed, but remains accessible via the menu bar icon.")
+                    HelpBullet("Click the menu bar speaker icon or press Cmd+Q to fully quit the app.")
+                    HelpBullet("Use the Open GUI button in the menu bar widget to bring the window back to focus.")
                 }
 
                 HelpSection(title: "Packaging", symbol: "shippingbox.fill") {
@@ -1891,9 +1908,42 @@ struct MenuBarWidget: View {
                     }
                 }
             }
+
+            Divider()
+
+            HStack(spacing: 8) {
+                Button {
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                } label: {
+                    Label("Open GUI", systemImage: "arrowshape.up.right.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    NSApplication.shared.terminate(nil)
+                } label: {
+                    Label("Quit", systemImage: "power")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
         }
         .padding(14)
         .background(Color(nsColor: .windowBackgroundColor))
+        .contextMenu {
+            Button {
+                NSApplication.shared.activate(ignoringOtherApps: true)
+            } label: {
+                Label("Open GUI", systemImage: "arrowshape.up.right.fill")
+            }
+
+            Button {
+                NSApplication.shared.terminate(nil)
+            } label: {
+                Label("Quit", systemImage: "power")
+            }
+        }
         .onAppear {
             store.start()
         }

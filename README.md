@@ -32,7 +32,9 @@ Audio Mixer provides a visible SwiftUI app window plus a menu-bar extra. It can 
 
 ### User Interface
 - **Menu bar widget** for quick device volume and mute control without opening main window.
+- **Running apps in menu bar** - see currently playing audio apps directly under output device with individual volume sliders.
 - **Menu bar widget** shows favorite apps with quick volume access.
+- **Menu bar quick actions** - Open GUI and Quit buttons at bottom of dropdown menu.
 - **Numeric volume input field**—click percentage to type exact value (0-100).
 - **App favorite/pinning** with star button (orange when starred, favorites sort to top).
 - **Visual indicators:**
@@ -129,10 +131,12 @@ Choose in Settings or use keyboard shortcuts:
 
 ### Menu Bar Widget
 1. Click the speaker icon in your menu bar (top right of screen).
-2. Adjust output or input volume with sliders.
-3. Toggle mute with the speaker/mic buttons (orange = unmuted, red = muted).
-4. Access favorite apps’ volume controls directly from the widget.
-5. Click the ↗ button to open the full application window.
+2. Adjust output device volume with sliders.
+3. See currently running audio apps listed below output device—adjust individual app volumes directly.
+4. Toggle mute with the speaker/mic buttons (orange = unmuted, red = muted).
+5. Adjust input device volume if available.
+6. Access favorite apps’ volume controls at the bottom of the widget.
+7. Use **Open GUI** button to bring the main window to focus, or **Quit** button to exit completely.
 
 ### Numeric Volume Input
 1. In the app or menu bar widget, click on any volume percentage (e.g., "75%").
@@ -216,10 +220,13 @@ Output and Input device cards at the top of each interface.
 The menu bar widget provides quick access without opening the main window:
 
 - **Output Device Control:** Volume slider, mute button, and percentage display
+- **Running Apps List:** Currently playing audio apps with individual volume sliders for immediate per-app control
 - **Input Device Control:** Microphone volume, mute button, and percentage display
-- **Favorite Apps List:** Quick volume adjustment for pinned apps
-- **Open Button:** Launch the full application window (↗ icon)
-- **Compact Size:** 320×280 pixel window stays out of the way
+- **Favorite Apps List:** Quick volume adjustment for pinned apps (shown at bottom)
+- **Action Buttons:** 
+  - **Open GUI:** Brings the main application window to focus
+  - **Quit:** Completely closes the app
+- **Compact Size:** 320×450 pixel window stays accessible
 
 The menu bar widget updates in real-time as you adjust volumes.
 
@@ -256,8 +263,9 @@ Use **Audio Processes** in the app to inspect the Core Audio process list. This 
 
 ## Dock & Window Behavior
 
-- App automatically hides from the dock when the main window is closed (menu bar remains accessible).
-- Clicking the ↗ button in the menu bar widget or using the menu bar brings the app back to the dock.
+- **Close window (red X or Cmd+W)**: Closes the main window while keeping the app running in the menu bar. The app hides from the dock but remains accessible via the menu bar icon.
+- **Quit app (Cmd+Q or Quit button)**: Completely closes the app—removes it from both the menu bar and dock.
+- Clicking the **Open GUI** button in the menu bar widget brings the app back to the dock with its window open.
 - Settings and Help windows open independently and don't affect dock visibility.
 - App respects "Launch at Login" setting in Settings → Startup section.
 
