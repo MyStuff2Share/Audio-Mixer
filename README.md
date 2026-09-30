@@ -4,7 +4,9 @@ A native SwiftUI macOS audio mixer inspired by Sound Control-style workflows.
 
 Audio Mixer provides a visible SwiftUI app window plus a menu-bar extra. It can control hardware input/output volume where macOS exposes those controls, and it can route selected app audio through Core Audio process taps for per-app volume, mute, and balance.
 
-<img width="926" height="599" alt="image" src="https://github.com/user-attachments/assets/093d5b9a-9dce-427c-9ffd-1efc6fd4c4c1" />
+**Main Window - Sidebar Dashboard Interface**
+
+<img width="926" height="599" alt="Audio Mixer main window" src="https://github.com/user-attachments/assets/093d5b9a-9dce-427c-9ffd-1efc6fd4c4c1" />
 
 
 ## Current Features
@@ -28,12 +30,20 @@ Audio Mixer provides a visible SwiftUI app window plus a menu-bar extra. It can 
 - Route recovery when an app’s audio helper process changes.
 
 ### User Interface
-- Menu bar widget for quick device volume and mute control without opening main window.
-- Menu bar widget shows favorite apps with quick volume access.
-- Numeric volume input field—click percentage to type exact value (0-100).
-- Smart app-list filtering that shows only apps actively producing audio by default (Active Only mode).
-- Four selectable interface styles: Sidebar Dashboard, Pro Console, Routing Map, and Card Stack.
-- Device mute buttons in all interface styles showing orange (unmuted) or red (muted) status.
+- **Menu bar widget** for quick device volume and mute control without opening main window.
+- **Menu bar widget** shows favorite apps with quick volume access.
+- **Numeric volume input field**—click percentage to type exact value (0-100).
+- **App favorite/pinning** with star button (orange when starred, favorites sort to top).
+- **Visual indicators:**
+  - Orange star = app is favorited
+  - Orange speaker icon = unmuted
+  - Red speaker icon = muted
+  - Green dot = app actively producing audio
+  - Gray dot = app has audio process but not active
+- **Smart app-list filtering** that shows only apps actively producing audio by default (Active Only mode).
+- **Four selectable interface styles:** Sidebar Dashboard, Pro Console, Routing Map, and Card Stack.
+- **Device mute buttons** in all interface styles showing orange (unmuted) or red (muted) status.
+- **Colorful controls:** Orange for output, Blue for input, Red for muted states.
 
 ### System Integration
 - Smart dock visibility—hides from dock when window is closed, accessible via menu bar.
@@ -84,6 +94,36 @@ cp -R "dist/Audio Mixer.app" /Applications/
 open "/Applications/Audio Mixer.app"
 ```
 
+## Visual Guide
+
+### Color Scheme
+- **Orange:** Output device controls, unmuted status, favorite star
+- **Blue:** Input device controls
+- **Red:** Muted status
+- **Green:** Active audio activity indicator
+- **Gray:** Inactive or secondary elements
+
+### UI Controls You'll See
+
+| Control | Location | Purpose |
+|---------|----------|---------|
+| Speaker icon in menu bar | Top-right of screen | Click to open menu bar widget |
+| Volume slider | Device cards & app rows | Drag to adjust volume 0-100% |
+| Volume percentage | Next to slider | Click to enter numeric value |
+| Star button | Right of app name | Click to favorite app |
+| Mute button | Speaker icon | Click to toggle mute (orange/red) |
+| Activity dot | Left of app name | Green = audio active, Gray = inactive |
+| Route button | Right side of row | Circle icon, orange when routed |
+| Device dropdown | Right of each app | Select output device for app |
+| ↗ button | Top-right of widget | Click to open main window |
+
+### Interface Styles
+Choose in Settings or use keyboard shortcuts:
+- **Cmd+1:** Sidebar Dashboard (default)
+- **Cmd+2:** Pro Console
+- **Cmd+3:** Routing Map
+- **Cmd+4:** Card Stack
+
 ## Quick Start
 
 ### Menu Bar Widget
@@ -114,6 +154,62 @@ open "/Applications/Audio Mixer.app"
 
 The status line reports how many Core Audio process objects were routed. Browsers may show helper-process routing depending on where the audio is actually produced.
 
+## Screenshots
+
+### Menu Bar Widget
+Click the speaker icon in your menu bar to access quick controls without opening the main window.
+
+**Features visible in widget:**
+- Output device volume slider with real-time percentage display
+- Output mute button (orange = unmuted, red = muted)
+- Input device volume slider with real-time percentage display
+- Input mute button (orange = unmuted, red = muted)
+- Favorite apps list showing pinned apps with quick volume sliders
+- "Open" button (↗) to launch full application
+
+### Main Application Window
+The Sidebar Dashboard interface shows all app audio controls in one view.
+
+**Features visible:**
+- Device summary cards at top with volume sliders and mute buttons
+- Per-app volume control rows with:
+  - App icon and name
+  - Activity indicator (green dot for active audio)
+  - Mute button
+  - Volume slider
+  - Volume percentage (clickable to enter custom value)
+  - Favorite star button (orange when starred)
+  - Output device selector dropdown
+  - Route button (orange when routed)
+- Scrollable list of apps
+
+### Numeric Volume Input
+Click any volume percentage (e.g., "75%") to edit it directly.
+
+**Input interface:**
+- Text field appears when clicking percentage
+- Type value 0-100
+- Press Enter to apply or Escape to cancel
+- Real-time validation
+
+### App Favorites
+Star button next to each app for quick access.
+
+**Favorites workflow:**
+1. Click star icon to favorite an app (becomes orange)
+2. Favorited apps automatically sort to top of list
+3. Favorite apps also appear in menu bar widget
+4. Click star again to remove from favorites
+
+### Device Controls
+Output and Input device cards at the top of each interface.
+
+**Device card features:**
+- Device name display
+- Volume slider (0-100%)
+- Mute button with color indicators
+- Volume percentage display
+
 ## Menu Bar Widget Features
 
 The menu bar widget provides quick access without opening the main window:
@@ -129,6 +225,33 @@ The menu bar widget updates in real-time as you adjust volumes.
 ## Debugging Audio Processes
 
 Use **Audio Processes** in the app to inspect the Core Audio process list. This is useful when a multi-process app reports audio under helper processes or when an app does not appear in the filtered list.
+
+## Understanding the Interface
+
+### Activity Indicators
+- **Green dot** next to app name = Core Audio detects active audio output from that app
+- **Gray dot** next to app name = App has audio processes but not currently active
+- **No dot** = App is listed but has no active audio processes
+
+### Mute Status
+- **Orange speaker icon** = Device/app is unmuted (normal volume state)
+- **Red speaker icon** = Device/app is muted (no sound will play)
+- **Speaker with slash** = Alternate mute icon (same as red speaker)
+
+### Favorite Status
+- **Orange/filled star** = App is favorited (pinned to top, shown in menu bar widget)
+- **Gray/outline star** = App is not favorited
+- Favorited apps sort to the top of the app list
+
+### Route Status
+- **Orange circle** = App is currently being routed through Audio Mixer (per-app control active)
+- **Gray circle** = App is not routed (volume control won't affect this app)
+- When routed, the app's slider and mute button become active
+
+### Volume Display
+- Shows current volume as percentage (0-100%)
+- **Click to edit:** Type custom value (0-100) and press Enter
+- Updates in real-time as you adjust sliders
 
 ## Dock & Window Behavior
 
