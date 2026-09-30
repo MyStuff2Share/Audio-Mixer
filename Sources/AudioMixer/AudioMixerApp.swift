@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 @main
 struct AudioMixerApp: App {
@@ -7,10 +8,29 @@ struct AudioMixerApp: App {
 
     init() {
         LaunchDiagnostics.recordLaunch()
+        NSApplication.shared.setActivationPolicy(.regular)
+
+        DispatchQueue.main.async {
+            NotificationCenter.default.addObserver(
+                forName: NSWindow.didResignMainNotification,
+                object: nil,
+                queue: .main
+            ) { _ in
+                updateDockVisibility()
+            }
+
+            NotificationCenter.default.addObserver(
+                forName: NSWindow.didBecomeMainNotification,
+                object: nil,
+                queue: .main
+            ) { _ in
+                NSApplication.shared.setActivationPolicy(.regular)
+            }
+        }
     }
 
     var body: some Scene {
-        WindowGroup("Audio Mixer") {
+        WindowGroup("Audio Mixer", id: "main") {
             MixerPanel()
                 .environmentObject(store)
                 .frame(
@@ -23,17 +43,20 @@ struct AudioMixerApp: App {
                 )
                 .onAppear {
                     store.start()
+                    NSApplication.shared.setActivationPolicy(.regular)
+                }
+                .onDisappear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        updateDockVisibility()
+                    }
                 }
         }
         .defaultSize(width: 760, height: 520)
 
         MenuBarExtra {
-            MixerPanel()
+            MenuBarWidget()
                 .environmentObject(store)
-                .frame(width: 760, height: 520)
-                .onAppear {
-                    store.start()
-                }
+                .frame(width: 320, height: 280)
         } label: {
             Label("Audio Mixer", systemImage: store.isEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
         }
@@ -79,6 +102,13 @@ struct AudioMixerApp: App {
                     openWindow(id: "help")
                 }
                 .keyboardShortcut("?", modifiers: .command)
+
+                Divider()
+
+                Button("Close Window") {
+                    NSApplication.shared.keyWindow?.close()
+                }
+                .keyboardShortcut("w", modifiers: .command)
             }
         }
     }
@@ -87,4 +117,14 @@ struct AudioMixerApp: App {
         store.settings.interfaceStyle = style
         store.saveSettings()
     }
+}
+
+@MainActor
+private func updateDockVisibility() {
+    let hasVisibleWindows = NSApplication.shared.windows.contains { window in
+        !window.isSheet && window.title != "Audio Mixer Help" && window.isVisible
+    }
+
+    let newPolicy: NSApplication.ActivationPolicy = hasVisibleWindows ? .regular : .accessory
+    NSApplication.shared.setActivationPolicy(newPolicy)
 }

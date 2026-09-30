@@ -143,8 +143,22 @@ final class MixerStore: ObservableObject {
         saveProfiles()
     }
 
+    func toggleFavorite(for app: RunningAudioApp) {
+        var profile = profile(for: app)
+        profile.isFavorite.toggle()
+        profiles[profile.id] = profile
+        saveProfiles()
+    }
+
+    func setOutputDevice(_ device: AudioDevice, for app: RunningAudioApp) {
+        var profile = profile(for: app)
+        profile.outputDeviceUID = device.uid
+        profiles[profile.id] = profile
+        saveProfiles()
+    }
+
     var visibleApps: [RunningAudioApp] {
-        runningApps.filter { app in
+        let filtered = runningApps.filter { app in
             if isRouting(app) {
                 return true
             }
@@ -158,6 +172,23 @@ final class MixerStore: ObservableObject {
             }
 
             return hasAudioProcess
+        }
+
+        return filtered.sorted { a, b in
+            let profileA = profiles[a.id]
+            let profileB = profiles[b.id]
+
+            if (profileA?.isFavorite ?? false) != (profileB?.isFavorite ?? false) {
+                return (profileA?.isFavorite ?? false)
+            }
+
+            let sortA = profileA?.sortOrder ?? 0
+            let sortB = profileB?.sortOrder ?? 0
+            if sortA != sortB {
+                return sortA < sortB
+            }
+
+            return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
         }
     }
 

@@ -134,7 +134,12 @@ struct MixerPanel: View {
                             isRouting: store.isRouting(app),
                             audioProcessCount: store.appAudioProcessCount(app),
                             isRunningOutput: store.appIsRunningOutput(app),
-                            toggleRouting: { store.toggleRouting(for: app) }
+                            toggleRouting: { store.toggleRouting(for: app) },
+                            isFavorite: store.profile(for: app).isFavorite,
+                            toggleFavorite: { store.toggleFavorite(for: app) },
+                            availableDevices: [store.outputDevice],
+                            selectedDeviceUID: store.profile(for: app).outputDeviceUID,
+                            setOutputDevice: { store.setOutputDevice($0, for: app) }
                         )
                     }
                 }
@@ -395,7 +400,12 @@ struct MixerPanel: View {
                             isRouting: store.isRouting(app),
                             audioProcessCount: store.appAudioProcessCount(app),
                             isRunningOutput: store.appIsRunningOutput(app),
-                            toggleRouting: { store.toggleRouting(for: app) }
+                            toggleRouting: { store.toggleRouting(for: app) },
+                            isFavorite: store.profile(for: app).isFavorite,
+                            toggleFavorite: { store.toggleFavorite(for: app) },
+                            availableDevices: [store.outputDevice],
+                            selectedDeviceUID: store.profile(for: app).outputDeviceUID,
+                            setOutputDevice: { store.setOutputDevice($0, for: app) }
                         )
                     }
                 }
@@ -804,6 +814,14 @@ struct DashboardAppRow: View {
     let audioProcessCount: Int
     let isRunningOutput: Bool
     let toggleRouting: () -> Void
+    let isFavorite: Bool
+    let toggleFavorite: () -> Void
+    let availableDevices: [AudioDevice]
+    let selectedDeviceUID: String?
+    let setOutputDevice: (AudioDevice) -> Void
+
+    @State private var volumeInput = ""
+    @State private var showVolumeInput = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -836,10 +854,55 @@ struct DashboardAppRow: View {
             Slider(value: $volume, in: 0...1)
                 .tint(.orange)
 
-            Text("\(Int(volume * 100))%")
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .frame(width: 42, alignment: .trailing)
+            if showVolumeInput {
+                TextField("Vol", text: $volumeInput)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 42)
+                    .onSubmit {
+                        if let val = Int(volumeInput), (0...100).contains(val) {
+                            volume = Double(val) / 100.0
+                        }
+                        showVolumeInput = false
+                    }
+                    .onAppear {
+                        volumeInput = "\(Int(volume * 100))"
+                    }
+            } else {
+                Text("\(Int(volume * 100))%")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 42, alignment: .trailing)
+                    .onTapGesture {
+                        showVolumeInput = true
+                    }
+                    .help("Click to enter volume (0-100)")
+            }
+
+            Button {
+                toggleFavorite()
+            } label: {
+                Image(systemName: isFavorite ? "star.fill" : "star")
+                    .font(.system(size: 14))
+                    .foregroundStyle(isFavorite ? .orange : .secondary)
+                    .frame(width: 20)
+            }
+            .buttonStyle(.plain)
+            .help(isFavorite ? "Remove from favorites" : "Add to favorites")
+
+            Menu {
+                ForEach(availableDevices, id: \.id) { device in
+                    Button(device.name) {
+                        setOutputDevice(device)
+                    }
+                }
+            } label: {
+                Image(systemName: "speaker.wave.1.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20)
+            }
+            .buttonStyle(.plain)
+            .help("Output device")
 
             Button(action: toggleRouting) {
                 Label(isRouting ? "On" : "Route", systemImage: isRouting ? "record.circle.fill" : "record.circle")
@@ -1239,6 +1302,10 @@ struct SettingsView: View {
 
                 SettingsSectionBox(title: "Startup") {
                     SettingsToggleRow(title: "Launch at login", binding: settingsBinding(\.launchAtLogin))
+                    Text("App will automatically start when you log in to your Mac")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 2)
                 }
 
                 SettingsSectionBox(title: "Audio") {
@@ -1611,6 +1678,181 @@ struct HelpBullet: View {
                 .padding(.top, 3)
             Text(text)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+struct MenuBarWidget: View {
+    @EnvironmentObject private var store: MixerStore
+    @State private var hoveredApp: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Audio Mixer")
+                        .font(.headline.weight(.semibold))
+                    Text("Quick Access")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button {
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                } label: {
+                    Image(systemName: "arrowshape.up.right.fill")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Open main window")
+            }
+            .padding(.bottom, 4)
+
+            Divider()
+
+            VStack(spacing: 12) {
+                VStack(spacing: 10) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "speaker.wave.2.fill")
+                            .foregroundStyle(.orange)
+                            .frame(width: 20)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Output")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Text(store.outputDevice.name)
+                                .font(.caption)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    HStack(spacing: 8) {
+                        Slider(value: Binding(
+                            get: { store.outputDevice.volume },
+                            set: { store.setOutputVolume($0) }
+                        ), in: 0...1)
+                            .tint(.orange)
+
+                        Button {
+                            store.setOutputMuted(!store.outputDevice.isMuted)
+                        } label: {
+                            Image(systemName: store.outputDevice.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                                .font(.caption)
+                                .foregroundStyle(store.outputDevice.isMuted ? .red : .orange)
+                        }
+                        .buttonStyle(.plain)
+                        .frame(width: 24)
+
+                        Text("\(Int(store.outputDevice.volume * 100))%")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .frame(width: 32, alignment: .trailing)
+                    }
+                }
+
+                VStack(spacing: 10) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "mic.fill")
+                            .foregroundStyle(.blue)
+                            .frame(width: 20)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Input")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Text(store.inputDevice.name)
+                                .font(.caption)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    HStack(spacing: 8) {
+                        Slider(value: Binding(
+                            get: { store.inputDevice.volume },
+                            set: { store.setInputVolume($0) }
+                        ), in: 0...1)
+                            .tint(.blue)
+
+                        Button {
+                            store.setInputMuted(!store.inputDevice.isMuted)
+                        } label: {
+                            Image(systemName: store.inputDevice.isMuted ? "speaker.slash.fill" : "mic.fill")
+                                .font(.caption)
+                                .foregroundStyle(store.inputDevice.isMuted ? .red : .blue)
+                        }
+                        .buttonStyle(.plain)
+                        .frame(width: 24)
+
+                        Text("\(Int(store.inputDevice.volume * 100))%")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .frame(width: 32, alignment: .trailing)
+                    }
+                }
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Favorite Apps")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                if store.visibleApps.filter({ store.profile(for: $0).isFavorite }).isEmpty {
+                    Text("No favorite apps yet")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 12)
+                } else {
+                    VStack(spacing: 6) {
+                        ForEach(store.visibleApps.filter({ store.profile(for: $0).isFavorite }), id: \.id) { app in
+                            HStack(spacing: 10) {
+                                if let icon = app.icon {
+                                    Image(nsImage: icon)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 20, height: 20)
+                                } else {
+                                    Image(systemName: "app.fill")
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 20, height: 20)
+                                }
+
+                                Text(app.name)
+                                    .font(.caption)
+                                    .lineLimit(1)
+
+                                Spacer()
+
+                                Slider(value: store.volumeBinding(for: app), in: 0...1)
+                                    .tint(.orange)
+                                    .frame(maxWidth: 80)
+
+                                Text("\(Int(store.profile(for: app).volume * 100))%")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 32, alignment: .trailing)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background(Color(nsColor: .controlBackgroundColor))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear {
+            store.start()
         }
     }
 }

@@ -36,6 +36,9 @@ struct AppAudioProfile: Codable, Equatable, Identifiable {
     var routeName: String?
     var remember: Bool
     var autoRoute: Bool
+    var isFavorite: Bool = false
+    var sortOrder: Int = 0
+    var outputDeviceUID: String? = nil
 
     static func fresh(for app: RunningAudioApp, remember: Bool) -> AppAudioProfile {
         AppAudioProfile(
@@ -47,7 +50,10 @@ struct AppAudioProfile: Codable, Equatable, Identifiable {
             eqEnabled: false,
             routeName: nil,
             remember: remember,
-            autoRoute: false
+            autoRoute: false,
+            isFavorite: false,
+            sortOrder: 0,
+            outputDeviceUID: nil
         )
     }
 
@@ -61,6 +67,9 @@ struct AppAudioProfile: Codable, Equatable, Identifiable {
         case routeName
         case remember
         case autoRoute
+        case isFavorite
+        case sortOrder
+        case outputDeviceUID
     }
 
     init(
@@ -72,7 +81,10 @@ struct AppAudioProfile: Codable, Equatable, Identifiable {
         eqEnabled: Bool,
         routeName: String?,
         remember: Bool,
-        autoRoute: Bool
+        autoRoute: Bool,
+        isFavorite: Bool = false,
+        sortOrder: Int = 0,
+        outputDeviceUID: String? = nil
     ) {
         self.id = id
         self.displayName = displayName
@@ -83,6 +95,9 @@ struct AppAudioProfile: Codable, Equatable, Identifiable {
         self.routeName = routeName
         self.remember = remember
         self.autoRoute = autoRoute
+        self.isFavorite = isFavorite
+        self.sortOrder = sortOrder
+        self.outputDeviceUID = outputDeviceUID
     }
 
     init(from decoder: Decoder) throws {
@@ -96,6 +111,9 @@ struct AppAudioProfile: Codable, Equatable, Identifiable {
         routeName = try container.decodeIfPresent(String.self, forKey: .routeName)
         remember = try container.decodeIfPresent(Bool.self, forKey: .remember) ?? true
         autoRoute = try container.decodeIfPresent(Bool.self, forKey: .autoRoute) ?? false
+        isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
+        outputDeviceUID = try container.decodeIfPresent(String.self, forKey: .outputDeviceUID)
     }
 }
 
