@@ -6,8 +6,9 @@ Audio Mixer provides a visible SwiftUI app window plus a menu-bar extra. It can 
 
 **Main Window - Sidebar Dashboard Interface**
 
-<img width="926" height="599" alt="Audio Mixer main window" src="https://github.com/user-attachments/assets/093d5b9a-9dce-427c-9ffd-1efc6fd4c4c1" />
+<img width="848" height="558" alt="Application" src="https://github.com/user-attachments/assets/4808cc86-0e91-48f2-adc8-e19773f9894a" />
 
+<img width="332" height="460" alt="Menu-Bar" src="https://github.com/user-attachments/assets/8c6f2a96-d61c-44b9-a82f-37010308a42e" />
 
 ## Current Features
 
