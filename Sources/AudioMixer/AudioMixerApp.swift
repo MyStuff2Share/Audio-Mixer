@@ -59,6 +59,13 @@ struct AudioMixerApp: App {
                 .frame(width: 320, height: 280)
         } label: {
             Label("Audio Mixer", systemImage: store.isEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                .contextMenu {
+                    Button {
+                        NSApplication.shared.terminate(nil)
+                    } label: {
+                        Label("Quit", systemImage: "power")
+                    }
+                }
         }
         .menuBarExtraStyle(.window)
 

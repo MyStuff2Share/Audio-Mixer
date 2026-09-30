@@ -1753,7 +1753,50 @@ struct MenuBarWidget: View {
                             .foregroundStyle(.secondary)
                             .frame(width: 32, alignment: .trailing)
                     }
+
+                    if !store.visibleApps.isEmpty {
+                        Divider()
+                            .padding(.vertical, 2)
+
+                        VStack(spacing: 6) {
+                            ForEach(store.visibleApps, id: \.id) { app in
+                                HStack(spacing: 10) {
+                                    if let icon = app.icon {
+                                        Image(nsImage: icon)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 16, height: 16)
+                                    } else {
+                                        Image(systemName: "app.fill")
+                                            .foregroundStyle(.secondary)
+                                            .font(.system(size: 11))
+                                            .frame(width: 16, height: 16)
+                                    }
+
+                                    Text(app.name)
+                                        .font(.caption)
+                                        .lineLimit(1)
+                                        .frame(maxWidth: 60, alignment: .leading)
+
+                                    Spacer()
+
+                                    Slider(value: store.volumeBinding(for: app), in: 0...1)
+                                        .tint(.orange)
+                                        .frame(maxWidth: 60)
+
+                                    Text("\(Int(store.profile(for: app).volume * 100))%")
+                                        .font(.caption.monospacedDigit())
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 28, alignment: .trailing)
+                                }
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 4)
+                            }
+                        }
+                    }
                 }
+
+                Divider()
 
                 VStack(spacing: 10) {
                     HStack(spacing: 12) {
