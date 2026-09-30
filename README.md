@@ -4,6 +4,9 @@ A native SwiftUI macOS audio mixer inspired by Sound Control-style workflows.
 
 Audio Mixer provides a visible SwiftUI app window plus a menu-bar extra. It can control hardware input/output volume where macOS exposes those controls, and it can route selected app audio through Core Audio process taps for per-app volume, mute, and balance.
 
+<img width="926" height="599" alt="image" src="https://github.com/user-attachments/assets/093d5b9a-9dce-427c-9ffd-1efc6fd4c4c1" />
+
+
 ## Current Features
 
 - Default input and output device discovery through Core Audio.
