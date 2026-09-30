@@ -10,7 +10,7 @@ Audio Mixer provides a visible SwiftUI app window plus a menu-bar extra. It can 
 ## Current Features
 
 - Default input and output device discovery through Core Audio.
-- Hardware input/output volume and mute control when supported by the device.
+- Hardware input/output volume and mute control for devices with quick-access mute buttons.
 - Per-app volume, mute, and balance profiles persisted by bundle identifier.
 - Core Audio process tap routing for running apps on macOS 14.2+.
 - Private aggregate-device creation for each active app route.
@@ -20,7 +20,7 @@ Audio Mixer provides a visible SwiftUI app window plus a menu-bar extra. It can 
 - Remembered auto-route preferences for apps that should route again when they produce audio.
 - Automatic stale-route cleanup when an app quits or stops exposing audio processes.
 - Route recovery when an app’s audio helper process changes.
-- App-list filtering for likely audio-capable apps and an Active Only mode.
+- Smart app-list filtering that shows only apps actively producing audio by default (Active Only mode).
 - Audio Processes debug view showing Core Audio object ID, PID, bundle ID, and output activity.
 - Four selectable interface styles: Sidebar Dashboard, Pro Console, Routing Map, and Card Stack.
 - Built-in Help guide available from the macOS Help menu with setup, routing, shortcuts, and troubleshooting notes.
